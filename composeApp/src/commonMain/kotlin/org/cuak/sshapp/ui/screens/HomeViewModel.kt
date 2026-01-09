@@ -11,7 +11,6 @@ import org.cuak.sshapp.repository.ServerRepository
 
 class HomeViewModel(private val repository: ServerRepository) : ViewModel() {
 
-    // Obtenemos los servidores directamente del repositorio como un StateFlow
     val servers: StateFlow<List<Server>> = repository.getAllServers()
         .stateIn(
             scope = viewModelScope,
@@ -21,23 +20,14 @@ class HomeViewModel(private val repository: ServerRepository) : ViewModel() {
 
     fun addServer(name: String, ip: String, user: String, iconName: String) {
         viewModelScope.launch {
-            val newServer = Server(
-                name = name,
-                ip = ip,
-                username = user,
-                iconName = iconName
+            repository.addServer(
+                Server(name = name, ip = ip, username = user, iconName = iconName)
             )
-            repository.addServer(newServer)
-        }
-    }
-    fun deleteServer(server: Server) {
-        viewModelScope.launch {
-            repository.deleteServer(server.id)
         }
     }
 
     fun showServerOptions(server: Server) {
-        println("Opciones para: ${server.name}")
+        println("Pulsación larga en: ${server.name}")
     }
 }
 /*

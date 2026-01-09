@@ -57,6 +57,7 @@ kotlin {
             implementation(compose.materialIconsExtended)
             implementation(libs.sqldelight.runtime)
             implementation(libs.sqldelight.coroutines)
+            implementation(libs.okio)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

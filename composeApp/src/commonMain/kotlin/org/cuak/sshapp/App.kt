@@ -12,23 +12,20 @@ import org.cuak.sshapp.ui.theme.AppTheme // Importa tu nuevo tema
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
 @Composable
-@Preview
 fun App(database: ServerDatabase) {
+    // Es vital usar el repositorio conectado a la base de datos que recibimos
     val repository = remember { ServerRepository(database) }
     val viewModel = remember { HomeViewModel(repository) }
 
     AppTheme {
-        // 3. Surface aplica el color de fondo del tema automáticamente
         Surface(
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background
         ) {
             HomeScreen(
                 viewModel = viewModel,
-                onServerClick = { server ->
-                    println("Navegando a detalles de: ${server.name}")
-                }
+                onServerClick = { /* ... */ }
             )
-        } // Cierre de Surface
-    } // Cierre de AppTheme
+        }
+    }
 }
