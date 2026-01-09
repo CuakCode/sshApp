@@ -1,0 +1,62 @@
+import kotlin.Int;
+
+
+-- Tabla para almacenar los servidores
+CREATE TABLE ServerEntity (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, -- Quita el 'NOT NULL' aquí
+    name TEXT NOT NULL,
+    ip TEXT NOT NULL,
+    port INTEGER AS Int NOT NULL DEFAULT 22,
+    username TEXT NOT NULL,
+    password TEXT,
+    sshKeyPath TEXT,
+    iconName TEXT NOT NULL DEFAULT 'dns'
+);
+
+-- Tabla para almacenar el historial de métricas (opcional, pero útil)
+CREATE TABLE MetricHistory (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, -- Quita el 'NOT NULL' aquí
+    serverId INTEGER NOT NULL,
+    cpuUsage REAL NOT NULL,
+    ramUsage REAL NOT NULL,
+    diskUsage REAL NOT NULL,
+    temperature REAL,
+    timestamp INTEGER NOT NULL,
+    FOREIGN KEY (serverId) REFERENCES ServerEntity(id) ON DELETE CASCADE
+);
+
+-- CONSULTAS PARA SERVIDORES
+
+insertServer:
+INSERT INTO ServerEntity(name, ip, port, username, password, sshKeyPath, iconName)
+VALUES (?, ?, ?, ?, ?, ?, ?);
+
+updateServer:
+UPDATE ServerEntity
+SET name = ?, ip = ?, port = ?, username = ?, password = ?, sshKeyPath = ?, iconName = ?
+WHERE id = ?;
+
+deleteServer:
+DELETE FROM ServerEntity WHERE id = ?;
+
+selectAllServers:
+SELECT * FROM ServerEntity;
+
+selectServerById:
+SELECT * FROM ServerEntity WHERE id = ?;
+
+-- CONSULTAS PARA MÉTRICAS
+
+insertMetric:
+INSERT INTO MetricHistory(serverId, cpuUsage, ramUsage, diskUsage, temperature, timestamp)
+VALUES (?, ?, ?, ?, ?, ?);
+
+getLatestMetricsForServer:
+SELECT * FROM MetricHistory
+WHERE serverId = ?
+ORDER BY timestamp DESC
+LIMIT 1;
+
+-- Limpiar historial antiguo (ej. más de 24h) para no llenar el móvil
+deleteOldMetrics:
+DELETE FROM MetricHistory WHERE timestamp < ?;
