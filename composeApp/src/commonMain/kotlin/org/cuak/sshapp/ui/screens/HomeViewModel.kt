@@ -1,39 +1,46 @@
 package org.cuak.sshapp.ui.screens
 
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import org.cuak.sshapp.models.Server
-import org.cuak.sshapp.models.ServerStatus
-/*
-class HomeViewModel : ViewModel() {
-    private val _servers = MutableStateFlow<List<Server>>(emptyList())
-    val servers: StateFlow<List<Server>> = _servers
+import org.cuak.sshapp.repository.ServerRepository
 
-    init {
-        loadServers()
-        startStatusPolling()
-    }
+class HomeViewModel(private val repository: ServerRepository) : ViewModel() {
 
-    private fun loadServers() {
-        // Aquí cargarías desde ServerDatabase.sq
-    }
+    // Obtenemos los servidores directamente del repositorio como un StateFlow
+    val servers: StateFlow<List<Server>> = repository.getAllServers()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
 
-    private fun startStatusPolling() {
+    fun addServer(name: String, ip: String, user: String, iconName: String) {
         viewModelScope.launch {
-            // Proceso encargado de realizar ping periódico a las IPs
-            // Si responde, status = ServerStatus.ONLINE (Verde en UI)
-            // Si no responde, status = ServerStatus.OFFLINE (Rojo en UI)
+            val newServer = Server(
+                name = name,
+                ip = ip,
+                username = user,
+                iconName = iconName
+            )
+            repository.addServer(newServer)
+        }
+    }
+    fun deleteServer(server: Server) {
+        viewModelScope.launch {
+            repository.deleteServer(server.id)
         }
     }
 
     fun showServerOptions(server: Server) {
-        // Lógica para eliminar o modificar el servidor tras pulsación larga
+        println("Opciones para: ${server.name}")
     }
-}*/
-
+}
+/*
 class HomeViewModel : ViewModel() {
     // Lista de prueba con diferentes estados
     private val _servers = MutableStateFlow(
@@ -49,4 +56,4 @@ class HomeViewModel : ViewModel() {
     fun showServerOptions(server: Server) {
         println("Pulsación larga en: ${server.name}")
     }
-}
+}*/
