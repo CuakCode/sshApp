@@ -4,27 +4,23 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.tooling.preview.Preview
 import org.cuak.sshapp.database.DatabaseDriverFactory
-import org.cuak.sshapp.database.createDatabase
+import org.cuak.sshapp.di.initKoin
+import org.koin.android.ext.koin.androidContext
+import org.koin.dsl.module
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
-        val driverFactory = DatabaseDriverFactory(applicationContext)
-        val database = createDatabase(driverFactory)
+        initKoin(
+            appDeclaration = { androidContext(this@MainActivity) },
+            platformModules = listOf(module { single { DatabaseDriverFactory(applicationContext) } })
+        )
 
         setContent {
-            App(database = database)
+            App()
         }
     }
 }
-/*
-@Preview
-@Composable
-fun AppAndroidPreview() {
-    App()
-}*/

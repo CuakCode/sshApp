@@ -3,16 +3,20 @@ package org.cuak.sshapp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import org.cuak.sshapp.database.DatabaseDriverFactory
-import org.cuak.sshapp.database.createDatabase
+import org.cuak.sshapp.di.initKoin
+import org.koin.dsl.module
 
-fun main() = application {
-    val driverFactory = DatabaseDriverFactory()
-    val database = createDatabase(driverFactory)
+fun main() {
+    initKoin(
+        platformModules = listOf(module { single { DatabaseDriverFactory() } })
+    )
 
-    Window(
-        onCloseRequest = ::exitApplication,
-        title = "sshApp",
-    ) {
-        App(database = database)
+    application {
+        Window(
+            onCloseRequest = ::exitApplication,
+            title = "sshApp",
+        ) {
+            App()
+        }
     }
 }

@@ -8,20 +8,44 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import org.cuak.sshapp.ui.components.ServerCard
+import cafe.adriel.voyager.core.screen.Screen
+import cafe.adriel.voyager.koin.koinScreenModel
+import cafe.adriel.voyager.navigator.LocalNavigator
+import cafe.adriel.voyager.navigator.currentOrThrow
 import org.cuak.sshapp.models.Server
+import org.cuak.sshapp.ui.components.ServerCard
 import org.cuak.sshapp.ui.components.getIconByName
+
+class HomeScreen : Screen {
+
+    @Composable
+    override fun Content() {
+        // Obtenemos el navegador de Voyager
+        val navigator = LocalNavigator.currentOrThrow
+
+        // Inyectamos el ViewModel usando la extensión de Voyager para Koin
+        // Esto asegura que el ViewModel esté ligado al ciclo de vida de esta Screen
+        val viewModel = koinScreenModel<HomeViewModel>()
+
+        // Llamamos al contenido de la pantalla
+        HomeScreenContent(
+            viewModel = viewModel,
+            onServerClick = { server ->
+                // Ejemplo de navegación a detalles (debes tener creada esta Screen)
+                // navigator.push(ServerDetailScreen(serverId = server.id))
+                println("Navegando a detalles de: ${server.name}")
+            }
+        )
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(
+private fun HomeScreenContent(
     viewModel: HomeViewModel,
     onServerClick: (Server) -> Unit
 ) {
-    // Observamos el StateFlow de servidores del ViewModel
     val servers by viewModel.servers.collectAsState()
-
-    // Estado local para controlar la visibilidad del diálogo
     var showAddDialog by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -36,19 +60,17 @@ fun HomeScreen(
             )
         },
         floatingActionButton = {
-            // Al pulsar, activamos el estado del diálogo
             FloatingActionButton(onClick = { showAddDialog = true }) {
                 Icon(Icons.Default.Add, contentDescription = "Añadir Servidor")
             }
         }
     ) { padding ->
-        // Si no hay servidores, podrías mostrar un texto de ayuda aquí
         LazyVerticalGrid(
             columns = GridCells.Adaptive(minSize = 180.dp),
             contentPadding = PaddingValues(8.dp),
             modifier = Modifier.padding(padding)
         ) {
-            items(servers) { server ->
+            items(servers, key = { it.id }) { server ->
                 ServerCard(
                     server = server,
                     onClick = { onServerClick(server) },
@@ -57,13 +79,12 @@ fun HomeScreen(
             }
         }
 
-        // Lógica para mostrar el diálogo
         if (showAddDialog) {
             AddServerDialog(
                 onDismiss = { showAddDialog = false },
                 onConfirm = { name, ip, user, icon ->
                     viewModel.addServer(name, ip, user, icon)
-                    showAddDialog = false // Cerramos tras confirmar
+                    showAddDialog = false
                 }
             )
         }
@@ -79,8 +100,6 @@ fun AddServerDialog(
     var name by remember { mutableStateOf("") }
     var ip by remember { mutableStateOf("") }
     var user by remember { mutableStateOf("") }
-
-    // Estados para el desplegable de iconos
     var expanded by remember { mutableStateOf(false) }
     val iconOptions = listOf("dns", "storage", "computer", "router", "cloud")
     var selectedIcon by remember { mutableStateOf(iconOptions[0]) }
@@ -109,7 +128,6 @@ fun AddServerDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // Menú desplegable de iconos
                 ExposedDropdownMenuBox(
                     expanded = expanded,
                     onExpandedChange = { expanded = !expanded }
@@ -149,7 +167,6 @@ fun AddServerDialog(
         confirmButton = {
             Button(
                 onClick = { onConfirm(name, ip, user, selectedIcon) },
-                // Validamos que los campos no estén vacíos
                 enabled = name.isNotBlank() && ip.isNotBlank() && user.isNotBlank()
             ) { Text("Guardar") }
         },

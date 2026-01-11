@@ -1,7 +1,9 @@
 package org.cuak.sshapp.ui.screens
 
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
+// 1. Elimina el import de androidx.lifecycle.ViewModel
+// 2. Añade los imports de Voyager
+import cafe.adriel.voyager.core.model.ScreenModel
+import cafe.adriel.voyager.core.model.screenModelScope
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -9,17 +11,20 @@ import kotlinx.coroutines.launch
 import org.cuak.sshapp.models.Server
 import org.cuak.sshapp.repository.ServerRepository
 
-class HomeViewModel(private val repository: ServerRepository) : ViewModel() {
+// Cambia la herencia a ScreenModel
+class HomeViewModel(private val repository: ServerRepository) : ScreenModel {
 
     val servers: StateFlow<List<Server>> = repository.getAllServers()
         .stateIn(
-            scope = viewModelScope,
+            // Usa screenModelScope en lugar de viewModelScope
+            scope = screenModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
         )
 
     fun addServer(name: String, ip: String, user: String, iconName: String) {
-        viewModelScope.launch {
+        // Usa screenModelScope
+        screenModelScope.launch {
             repository.addServer(
                 Server(name = name, ip = ip, username = user, iconName = iconName)
             )
