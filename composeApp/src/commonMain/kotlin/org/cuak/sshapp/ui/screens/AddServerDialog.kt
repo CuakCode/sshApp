@@ -11,7 +11,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-// Importaciones corregidas según el código fuente de FileKit
+// 1. Añade este import para resolver la propiedad 'path'
+import io.github.vinceglb.filekit.path
+// Importaciones de los componentes de diálogo
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
 import io.github.vinceglb.filekit.dialogs.FileKitType
 import org.cuak.sshapp.ui.components.getIconByName
@@ -42,12 +44,12 @@ fun AddServerDialog(
     val iconOptions = listOf("dns", "storage", "computer", "router", "cloud")
     var selectedIcon by remember { mutableStateOf(iconOptions[0]) }
 
-    // Configuración corregida: rememberFilePickerLauncher y FileKitType
+    // El picker ahora reconocerá .path correctamente
     val pickerLauncher = rememberFilePickerLauncher(
         type = FileKitType.File(extensions = listOf("key", "pem", "pub", "ppk")),
         title = "Selecciona tu clave SSH"
     ) { file ->
-        // file es de tipo PlatformFile?
+        // 'file' es de tipo PlatformFile?, y .path ahora es visible
         file?.path?.let { sshKeyPath = it }
     }
 
@@ -90,7 +92,6 @@ fun AddServerDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // Contraseña con icono de visibilidad
                 OutlinedTextField(
                     value = password,
                     onValueChange = { password = it },
@@ -105,7 +106,6 @@ fun AddServerDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // SSH Key con FileKit
                 OutlinedTextField(
                     value = sshKeyPath,
                     onValueChange = { sshKeyPath = it },
@@ -120,7 +120,6 @@ fun AddServerDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // Selector de Icono
                 ExposedDropdownMenuBox(
                     expanded = expanded,
                     onExpandedChange = { expanded = !expanded }
