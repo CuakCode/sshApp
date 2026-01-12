@@ -6,6 +6,8 @@ data class Server(
     val ip: String,
     val port: Int = 22,
     val username: String,
+    val password: String? = null,
+    val sshKeyPath: String? = null,
     val status: ServerStatus = ServerStatus.UNKNOWN,
     val iconName: String = "dns"
 )

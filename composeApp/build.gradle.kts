@@ -65,6 +65,8 @@ kotlin {
             implementation(libs.voyager.navigator)
             implementation(libs.voyager.koin)
             implementation(libs.voyager.transitions)
+            implementation(libs.filekit.core)
+            implementation(libs.filekit.compose)
 
         }
         commonTest.dependencies {

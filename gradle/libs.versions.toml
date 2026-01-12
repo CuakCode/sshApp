@@ -15,9 +15,10 @@ junit = "4.13.2"
 kotlin = "2.3.0"
 kotlinx-coroutines = "1.10.2"
 sqldelight = "2.2.1"
-okio = "3.9.0"
+okio = "3.16.4"
 koin = "4.1.1"
 voyager = "1.1.0-beta03"
+filekit = "0.12.0"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -45,6 +46,9 @@ koin-compose-viewmodel = { module = "io.insert-koin:koin-compose-viewmodel", ver
 voyager-navigator = { module = "cafe.adriel.voyager:voyager-navigator", version.ref = "voyager" }
 voyager-koin = { module = "cafe.adriel.voyager:voyager-koin", version.ref = "voyager" }
 voyager-transitions = { module = "cafe.adriel.voyager:voyager-transitions", version.ref = "voyager" }
+filekit-core = { module = "io.github.vinceglb:filekit-core", version.ref = "filekit" }
+filekit-dialogs = { module = "io.github.vinceglb:filekit-dialogs", version.ref = "filekit" }
+filekit-compose = { module = "io.github.vinceglb:filekit-dialogs-compose", version.ref = "filekit" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

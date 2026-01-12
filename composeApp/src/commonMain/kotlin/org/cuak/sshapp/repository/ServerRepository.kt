@@ -28,8 +28,8 @@ class ServerRepository(database: ServerDatabase) {
             ip = server.ip,
             port = server.port,
             username = server.username,
-            password = null, // Podrías añadir estos campos al modelo Server
-            sshKeyPath = null,
+            password = server.password,
+            sshKeyPath = server.sshKeyPath,
             iconName = server.iconName
         )
     }

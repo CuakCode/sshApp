@@ -22,11 +22,18 @@ class HomeViewModel(private val repository: ServerRepository) : ScreenModel {
             initialValue = emptyList()
         )
 
-    fun addServer(name: String, ip: String, user: String, iconName: String) {
-        // Usa screenModelScope
+    fun addServer(name: String, ip: String, port: Int, user: String, pass: String?, keyPath: String?, iconName: String) {
         screenModelScope.launch {
             repository.addServer(
-                Server(name = name, ip = ip, username = user, iconName = iconName)
+                Server(
+                    name = name,
+                    ip = ip,
+                    port = port,
+                    username = user,
+                    password = pass,
+                    sshKeyPath = keyPath,
+                    iconName = iconName
+                )
             )
         }
     }

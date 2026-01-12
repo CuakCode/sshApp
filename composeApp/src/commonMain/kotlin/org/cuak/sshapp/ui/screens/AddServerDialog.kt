@@ -11,9 +11,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import io.github.vinceglb.filekit-dial.rememberFileKitPickerLauncher
-import io.github.vinceglb.filekit.core.PickerType
-import io.github.vinceglb.filekit.core.PickerMode
+// Importaciones corregidas según el código fuente de FileKit
+import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
+import io.github.vinceglb.filekit.dialogs.FileKitType
 import org.cuak.sshapp.ui.components.getIconByName
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -30,7 +30,6 @@ fun AddServerDialog(
         icon: String
     ) -> Unit
 ) {
-    // Estados alineados con la tabla 'server' de tu base de datos
     var name by remember { mutableStateOf("") }
     var ip by remember { mutableStateOf("") }
     var port by remember { mutableStateOf("22") }
@@ -38,24 +37,23 @@ fun AddServerDialog(
     var password by remember { mutableStateOf("") }
     var sshKeyPath by remember { mutableStateOf("") }
 
-    // Estados de UI
     var passwordVisible by remember { mutableStateOf(false) }
     var expanded by remember { mutableStateOf(false) }
     val iconOptions = listOf("dns", "storage", "computer", "router", "cloud")
     var selectedIcon by remember { mutableStateOf(iconOptions[0]) }
 
-    // Configuración de FileKit con el artefacto 'filekit-dialogs-compose'
-    val pickerLauncher = rememberFileKitPickerLauncher(
-        type = PickerType.File(extensions = listOf("key", "pem", "pub", "ppk")),
+    // Configuración corregida: rememberFilePickerLauncher y FileKitType
+    val pickerLauncher = rememberFilePickerLauncher(
+        type = FileKitType.File(extensions = listOf("key", "pem", "pub", "ppk")),
         title = "Selecciona tu clave SSH"
     ) { file ->
-        // Obtenemos la ruta nativa del archivo seleccionado
+        // file es de tipo PlatformFile?
         file?.path?.let { sshKeyPath = it }
     }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Configurar Nuevo Servidor") },
+        title = { Text("Nuevo Servidor") },
         text = {
             Column(
                 modifier = Modifier
@@ -63,34 +61,28 @@ fun AddServerDialog(
                     .fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Identificación del servidor
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Nombre Identificador") },
+                    label = { Text("Nombre del Servidor") },
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // Dirección y Puerto (en una fila)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = ip,
                         onValueChange = { ip = it },
-                        label = { Text("IP o Host") },
+                        label = { Text("IP / Host") },
                         modifier = Modifier.weight(1f)
                     )
                     OutlinedTextField(
                         value = port,
-                        onValueChange = { if (it.all { char -> char.isDigit() }) port = it },
+                        onValueChange = { if (it.all { c -> c.isDigit() }) port = it },
                         label = { Text("Puerto") },
                         modifier = Modifier.width(90.dp)
                     )
                 }
 
-                // Usuario SSH
                 OutlinedTextField(
                     value = user,
                     onValueChange = { user = it },
@@ -98,7 +90,7 @@ fun AddServerDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // Contraseña con Toggle de Visibilidad
+                // Contraseña con icono de visibilidad
                 OutlinedTextField(
                     value = password,
                     onValueChange = { password = it },
@@ -107,22 +99,22 @@ fun AddServerDialog(
                     trailingIcon = {
                         val icon = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff
                         IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                            Icon(icon, contentDescription = "Toggle contraseña")
+                            Icon(icon, contentDescription = "Toggle password")
                         }
                     },
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // Ruta de Clave Privada con FileKit Picker
+                // SSH Key con FileKit
                 OutlinedTextField(
                     value = sshKeyPath,
                     onValueChange = { sshKeyPath = it },
-                    label = { Text("Archivo de Clave SSH") },
-                    readOnly = true, // Evitamos errores manuales de ruta
-                    placeholder = { Text("No seleccionado") },
+                    label = { Text("Ruta SSH Key") },
+                    placeholder = { Text("Seleccionar archivo...") },
+                    readOnly = true,
                     trailingIcon = {
                         IconButton(onClick = { pickerLauncher.launch() }) {
-                            Icon(Icons.Default.FolderOpen, contentDescription = "Buscar archivo")
+                            Icon(Icons.Default.FolderOpen, contentDescription = "Abrir explorador")
                         }
                     },
                     modifier = Modifier.fillMaxWidth()
@@ -137,14 +129,11 @@ fun AddServerDialog(
                         value = selectedIcon.replaceFirstChar { it.uppercase() },
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Icono de Tarjeta") },
-                        leadingIcon = {
-                            Icon(getIconByName(selectedIcon), contentDescription = null)
-                        },
+                        label = { Text("Icono") },
+                        leadingIcon = { Icon(getIconByName(selectedIcon), contentDescription = null) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                         modifier = Modifier.menuAnchor().fillMaxWidth()
                     )
-
                     ExposedDropdownMenu(
                         expanded = expanded,
                         onDismissRequest = { expanded = false }
@@ -169,25 +158,13 @@ fun AddServerDialog(
             Button(
                 onClick = {
                     onConfirm(
-                        name,
-                        ip,
-                        port.toIntOrNull() ?: 22,
-                        user,
-                        password.ifBlank { null },
-                        sshKeyPath.ifBlank { null },
-                        selectedIcon
+                        name, ip, port.toIntOrNull() ?: 22, user,
+                        password.ifBlank { null }, sshKeyPath.ifBlank { null }, selectedIcon
                     )
                 },
-                // Habilitamos solo si los campos obligatorios están llenos
                 enabled = name.isNotBlank() && ip.isNotBlank() && user.isNotBlank()
-            ) {
-                Text("Guardar")
-            }
+            ) { Text("Guardar") }
         },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancelar")
-            }
-        }
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
     )
 }
