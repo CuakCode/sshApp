@@ -11,16 +11,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-// 1. Añade este import para resolver la propiedad 'path'
 import io.github.vinceglb.filekit.path
-// Importaciones de los componentes de diálogo
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
 import io.github.vinceglb.filekit.dialogs.FileKitType
+import org.cuak.sshapp.models.Server
 import org.cuak.sshapp.ui.components.getIconByName
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddServerDialog(
+fun ServerFormDialog(
+    serverToEdit: Server? = null, // Si es null, el modo es "Añadir"
     onDismiss: () -> Unit,
     onConfirm: (
         name: String,
@@ -32,30 +32,32 @@ fun AddServerDialog(
         icon: String
     ) -> Unit
 ) {
-    var name by remember { mutableStateOf("") }
-    var ip by remember { mutableStateOf("") }
-    var port by remember { mutableStateOf("22") }
-    var user by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var sshKeyPath by remember { mutableStateOf("") }
+    // Inicialización de estados con valores existentes si estamos editando
+    var name by remember { mutableStateOf(serverToEdit?.name ?: "") }
+    var ip by remember { mutableStateOf(serverToEdit?.ip ?: "") }
+    var port by remember { mutableStateOf(serverToEdit?.port?.toString() ?: "22") }
+    var user by remember { mutableStateOf(serverToEdit?.username ?: "") }
+    var password by remember { mutableStateOf(serverToEdit?.password ?: "") }
+    var sshKeyPath by remember { mutableStateOf(serverToEdit?.sshKeyPath ?: "") }
+    var selectedIcon by remember { mutableStateOf(serverToEdit?.iconName ?: "dns") }
 
     var passwordVisible by remember { mutableStateOf(false) }
     var expanded by remember { mutableStateOf(false) }
     val iconOptions = listOf("dns", "storage", "computer", "router", "cloud")
-    var selectedIcon by remember { mutableStateOf(iconOptions[0]) }
 
-    // El picker ahora reconocerá .path correctamente
+    // Configuración del selector de archivos (FileKit)
     val pickerLauncher = rememberFilePickerLauncher(
         type = FileKitType.File(extensions = listOf("key", "pem", "pub", "ppk")),
         title = "Selecciona tu clave SSH"
     ) { file ->
-        // 'file' es de tipo PlatformFile?, y .path ahora es visible
         file?.path?.let { sshKeyPath = it }
     }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Nuevo Servidor") },
+        title = {
+            Text(if (serverToEdit == null) "Nuevo Servidor" else "Editar Servidor")
+        },
         text = {
             Column(
                 modifier = Modifier
@@ -70,7 +72,10 @@ fun AddServerDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     OutlinedTextField(
                         value = ip,
                         onValueChange = { ip = it },
@@ -129,8 +134,12 @@ fun AddServerDialog(
                         onValueChange = {},
                         readOnly = true,
                         label = { Text("Icono") },
-                        leadingIcon = { Icon(getIconByName(selectedIcon), contentDescription = null) },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                        leadingIcon = {
+                            Icon(getIconByName(selectedIcon), contentDescription = null)
+                        },
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                        },
                         modifier = Modifier.menuAnchor().fillMaxWidth()
                     )
                     ExposedDropdownMenu(
@@ -157,13 +166,22 @@ fun AddServerDialog(
             Button(
                 onClick = {
                     onConfirm(
-                        name, ip, port.toIntOrNull() ?: 22, user,
-                        password.ifBlank { null }, sshKeyPath.ifBlank { null }, selectedIcon
+                        name,
+                        ip,
+                        port.toIntOrNull() ?: 22,
+                        user,
+                        password.ifBlank { null },
+                        sshKeyPath.ifBlank { null },
+                        selectedIcon
                     )
                 },
                 enabled = name.isNotBlank() && ip.isNotBlank() && user.isNotBlank()
-            ) { Text("Guardar") }
+            ) {
+                Text(if (serverToEdit == null) "Guardar" else "Actualizar")
+            }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancelar") }
+        }
     )
 }

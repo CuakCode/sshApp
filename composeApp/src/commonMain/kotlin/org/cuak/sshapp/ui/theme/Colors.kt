@@ -17,5 +17,5 @@ val StatusWarning = Color(0xFFFFC107) // Amarillo
 val StatusError = Color(0xFFF44336)   // Rojo
 
 // Colores para el Tema Oscuro
-val DarkBackground = Color(0xFF1C1B1F)
+val DarkBackground = Color(0xFF151515)
 val DarkSurface = Color(0xFF252429)

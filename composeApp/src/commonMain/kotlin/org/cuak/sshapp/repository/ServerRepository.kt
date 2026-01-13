@@ -35,14 +35,15 @@ class ServerRepository(database: ServerDatabase) {
     }
 
     // ServerRepository.kt
+    // Modifica esta función en ServerRepository.kt para persistir cambios correctamente
     fun updateServer(server: Server) {
         queries.updateServer(
             name = server.name,
             ip = server.ip,
             port = server.port,
             username = server.username,
-            password = null,
-            sshKeyPath = null,
+            password = server.password,
+            sshKeyPath = server.sshKeyPath,
             iconName = server.iconName,
             id = server.id
         )
