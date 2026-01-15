@@ -12,7 +12,6 @@ import org.koin.dsl.module
 val commonModule = module {
     single<ServerDatabase> { createDatabase(get()) }
     singleOf(::ServerRepository)
-
     // Cambiamos factory por screenModel para Voyager
     factory { HomeViewModel(get()) }
     // Si creas un ServerDetailViewModel, regístralo aquí también
