@@ -19,6 +19,9 @@ okio = "3.16.4"
 koin = "4.1.1"
 voyager = "1.1.0-beta03"
 filekit = "0.12.0"
+sshj = "0.38.0"
+bouncycastle = "1.77"
+slf4j = "2.0.9"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -49,6 +52,10 @@ voyager-transitions = { module = "cafe.adriel.voyager:voyager-transitions", vers
 filekit-core = { module = "io.github.vinceglb:filekit-core", version.ref = "filekit" }
 filekit-dialogs = { module = "io.github.vinceglb:filekit-dialogs", version.ref = "filekit" }
 filekit-compose = { module = "io.github.vinceglb:filekit-dialogs-compose", version.ref = "filekit" }
+sshj = { module = "com.hierynomus:sshj", version.ref = "sshj" }
+bouncycastle-prov = { module = "org.bouncycastle:bcprov-jdk15to18", version.ref = "bouncycastle" }
+bouncycastle-pkix = { module = "org.bouncycastle:bcpkix-jdk15to18", version.ref = "bouncycastle" }
+slf4j-nop = { module = "org.slf4j:slf4j-nop", version.ref = "slf4j" } # Para silenciar logs de SSHJ
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

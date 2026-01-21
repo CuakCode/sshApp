@@ -45,6 +45,10 @@ kotlin {
             implementation(libs.androidx.activity.compose)
             implementation(libs.sqldelight.android.driver)
             implementation(libs.koin.android)
+            implementation(libs.sshj)
+            implementation(libs.bouncycastle.prov)
+            implementation(libs.bouncycastle.pkix)
+            implementation(libs.slf4j.nop)
         }
         commonMain.dependencies {
             implementation(compose.runtime)
@@ -76,6 +80,10 @@ kotlin {
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutinesSwing)
             implementation(libs.sqldelight.jvm.driver)
+            implementation(libs.sshj)
+            implementation(libs.bouncycastle.prov)
+            implementation(libs.bouncycastle.pkix)
+            implementation(libs.slf4j.nop)
         }
         iosMain.dependencies {
             implementation(libs.sqldelight.native.driver)

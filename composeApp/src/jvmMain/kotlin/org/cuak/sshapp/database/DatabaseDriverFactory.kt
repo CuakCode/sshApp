@@ -5,20 +5,19 @@ import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import org.cuak.sshapp.ServerDatabase
 import java.io.File
 
-actual class DatabaseDriverFactory {
-    actual fun createDriver(): SqlDriver {
-        // Definimos una ruta de archivo (puedes usar una carpeta de datos de usuario)
+// Implementación específica para Desktop
+class JvmDatabaseDriverFactory : DatabaseDriverFactory {
+    override fun createDriver(): SqlDriver {
+        // Guardamos la DB en la carpeta de usuario
         val databasePath = File(System.getProperty("user.home"), "sshapp_server.db")
         val driver: SqlDriver = JdbcSqliteDriver("jdbc:sqlite:${databasePath.absolutePath}")
 
-        // Solo creamos el esquema si el archivo no existía o está vacío
-        // SQLDelight lanzará un error si intentas crear tablas que ya existen
+        // Creamos las tablas si no existen
         try {
             ServerDatabase.Schema.create(driver)
         } catch (e: Exception) {
-            // La base de datos ya existe
+            // La base de datos ya existe, ignoramos el error
         }
-
         return driver
     }
 }

@@ -1,18 +1,20 @@
 package org.cuak.sshapp.database
 
 import app.cash.sqldelight.db.SqlDriver
+import app.cash.sqldelight.ColumnAdapter
 import org.cuak.sshapp.ServerDatabase
-import app.cash.sqldelight.ColumnAdapter // Importante
-import org.cuak.sshapp.ServerEntity    // Importante
+import org.cuak.sshapp.ServerEntity
 
-expect class DatabaseDriverFactory {
+// 1. Definimos la Interfaz (Contrato)
+interface DatabaseDriverFactory {
     fun createDriver(): SqlDriver
 }
 
+// 2. Función helper para crear la base de datos usando la fábrica
 fun createDatabase(factory: DatabaseDriverFactory): ServerDatabase {
     val driver = factory.createDriver()
 
-    // Definimos el adaptador para convertir de Long (DB) a Int (Kotlin)
+    // Adaptador para convertir Long (SQL) a Int (Kotlin)
     val portAdapter = object : ColumnAdapter<Int, Long> {
         override fun decode(databaseValue: Long): Int = databaseValue.toInt()
         override fun encode(value: Int): Long = value.toLong()

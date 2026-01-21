@@ -5,8 +5,9 @@ import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.driver.android.AndroidSqliteDriver
 import org.cuak.sshapp.ServerDatabase
 
-actual class DatabaseDriverFactory(private val context: Context) {
-    actual fun createDriver(): SqlDriver {
+// Implementación específica para Android que recibe el Contexto
+class AndroidDatabaseDriverFactory(private val context: Context) : DatabaseDriverFactory {
+    override fun createDriver(): SqlDriver {
         return AndroidSqliteDriver(ServerDatabase.Schema, context, "server.db")
     }
 }
