@@ -60,7 +60,12 @@ class ServerRepository(database: ServerDatabase) {
         ip = ip,
         port = port,
         username = username,
+        password = password,
+        sshKeyPath = sshKeyPath,
         iconName = iconName,
         status = ServerStatus.UNKNOWN // El estado se calcula dinámicamente
     )
+    suspend fun getServerById(id: Long): Server? {
+        return queries.selectServerById(id).executeAsOneOrNull()?.toDomain()
+    }
 }

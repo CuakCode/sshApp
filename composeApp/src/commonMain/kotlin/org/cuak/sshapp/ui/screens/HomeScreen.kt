@@ -19,7 +19,6 @@ import org.cuak.sshapp.models.Server
 import org.cuak.sshapp.ui.components.ServerCard
 import org.cuak.sshapp.ui.components.getIconByName
 
-
 class HomeScreen : Screen {
 
     @Composable
@@ -27,17 +26,15 @@ class HomeScreen : Screen {
         // Obtenemos el navegador de Voyager
         val navigator = LocalNavigator.currentOrThrow
 
-        // Inyectamos el ViewModel usando la extensión de Voyager para Koin
-        // Esto asegura que el ViewModel esté ligado al ciclo de vida de esta Screen
+        // Inyectamos el ViewModel
         val viewModel = koinScreenModel<HomeViewModel>()
 
         // Llamamos al contenido de la pantalla
         HomeScreenContent(
             viewModel = viewModel,
             onServerClick = { server ->
-                // Ejemplo de navegación a detalles (debes tener creada esta Screen)
-                // navigator.push(ServerDetailScreen(serverId = server.id))
-                println("Navegando a detalles de: ${server.name}")
+                // IMPLEMENTACIÓN ACTUALIZADA: Navegamos a la pantalla de detalles
+                navigator.push(ServerDetailScreen(serverId = server.id))
             }
         )
     }
@@ -98,7 +95,7 @@ private fun HomeScreenContent(
                     leadingContent = { Icon(Icons.Default.Edit, contentDescription = null) },
                     modifier = Modifier.clickable {
                         showEditDialog = true
-                        // El bottom sheet se cierra al abrir el diálogo
+                        // El bottom sheet se cierra automáticamente al abrir el diálogo
                     }
                 )
                 ListItem(
@@ -127,7 +124,7 @@ private fun HomeScreenContent(
             )
         }
 
-        // 3. Diálogo de Añadir (Existente)
+        // 3. Diálogo de Añadir (Nuevo)
         if (showAddDialog) {
             ServerFormDialog(
                 onDismiss = { showAddDialog = false },
@@ -139,4 +136,3 @@ private fun HomeScreenContent(
         }
     }
 }
-
