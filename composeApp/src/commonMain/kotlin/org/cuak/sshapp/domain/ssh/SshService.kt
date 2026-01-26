@@ -7,4 +7,5 @@ interface SshClient {
 
     suspend fun fetchMetrics(server: Server): Result<ServerMetrics>
     suspend fun executeCommand(server: Server, command: String): Result<String>
+    suspend fun shutdown(server: Server): Result<Unit>
 }

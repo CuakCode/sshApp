@@ -53,4 +53,24 @@ class ServerDetailViewModel(
             )
         }
     }
+    fun shutdownServer() {
+        val currentServer = server ?: return
+
+        screenModelScope.launch {
+            // Opcional: Podrías añadir un estado "ShuttingDown" a tu UiState si quieres mostrar un spinner específico
+            val result = sshClient.shutdown(currentServer)
+
+            result.fold(
+                onSuccess = {
+                    // El servidor se ha mandado apagar.
+                    // Podrías navegar atrás o mostrar un Snackbar
+                    println("Comando de apagado enviado con éxito")
+                },
+                onFailure = { error ->
+                    // Manejo de errores (ej. contraseña sudo incorrecta)
+                    println("Error al apagar: ${error.message}")
+                }
+            )
+        }
+    }
 }

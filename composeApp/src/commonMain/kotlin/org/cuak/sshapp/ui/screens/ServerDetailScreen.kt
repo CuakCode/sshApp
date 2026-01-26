@@ -43,6 +43,30 @@ data class ServerDetailScreen(val serverId: Long) : Screen {
         var selectedTabIndex by remember { mutableStateOf(0) }
         val tabs = listOf("Monitor", "Procesos", "Terminal")
 
+        var showShutdownDialog by remember { mutableStateOf(false) }
+        if (showShutdownDialog) {
+            AlertDialog(
+                onDismissRequest = { showShutdownDialog = false },
+                icon = { Icon(Icons.Default.Warning, contentDescription = null) },
+                title = { Text("¿Apagar Servidor?") },
+                text = { Text("Esta acción ejecutará 'sudo poweroff'. El servidor dejará de responder.") },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            viewModel.shutdownServer()
+                            showShutdownDialog = false
+                            navigator.pop() // Volvemos a la lista
+                        },
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    ) {
+                        Text("Apagar")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showShutdownDialog = false }) { Text("Cancelar") }
+                }
+            )
+        }
         Scaffold(
             topBar = {
                 TopAppBar(
@@ -60,6 +84,13 @@ data class ServerDetailScreen(val serverId: Long) : Screen {
                         }
                     },
                     actions = {
+                        IconButton(onClick = { showShutdownDialog = true }) {
+                            Icon(
+                                imageVector = Icons.Default.PowerSettingsNew,
+                                contentDescription = "Apagar",
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
                         IconButton(onClick = { viewModel.fetchMetrics() }) {
                             Icon(Icons.Default.Refresh, contentDescription = "Refrescar")
                         }

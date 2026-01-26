@@ -126,4 +126,37 @@ class JvmSshClient : SshClient {
             session.close()
         }
     }
+
+    override suspend fun shutdown(server: Server): Result<Unit> = withContext(Dispatchers.IO) {
+        val client = SSHClient()
+        try {
+            // Reutilizamos tu helper de conexión/autenticación
+            client.connectAndAuthenticate(server)
+
+            val session = client.startSession()
+            try {
+                val cmd = session.exec("sudo -S -p '' poweroff")
+
+                // 2. Inyectamos la contraseña en el OutputStream del comando
+                val password = server.password?.trim() ?: ""
+                cmd.outputStream.use { out ->
+                    out.write((password + "\n").toByteArray())
+                    out.flush()
+                }
+
+                // 3. Esperamos brevemente. Poweroff suele cerrar la conexión abruptamente.
+                cmd.join(2, TimeUnit.SECONDS)
+
+                Result.success(Unit)
+            } finally {
+                session.close()
+            }
+        } catch (e: Exception) {
+            // Es normal que lance excepción si el servidor se apaga antes de cerrar sesión limpiamente
+            // Puedes filtrar si es un error de "Connection reset" y contarlo como éxito
+            Result.failure(e)
+        } finally {
+            if (client.isConnected) client.disconnect()
+        }
+    }
 }
