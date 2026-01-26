@@ -130,21 +130,22 @@ class JvmSshClient : SshClient {
     override suspend fun shutdown(server: Server): Result<Unit> = withContext(Dispatchers.IO) {
         val client = SSHClient()
         try {
-            // Reutilizamos tu helper de conexión/autenticación
             client.connectAndAuthenticate(server)
 
             val session = client.startSession()
             try {
-                val cmd = session.exec("sudo -S -p '' poweroff")
+                val shutdownCommand = "sudo -S -p '' poweroff 2>/dev/null || poweroff 2>/dev/null || kill -s TERM 1"
 
-                // 2. Inyectamos la contraseña en el OutputStream del comando
+                val cmd = session.exec(shutdownCommand)
+
+                // Inyectamos la contraseña por si acaso se ejecuta la parte de 'sudo'
                 val password = server.password?.trim() ?: ""
                 cmd.outputStream.use { out ->
                     out.write((password + "\n").toByteArray())
                     out.flush()
                 }
 
-                // 3. Esperamos brevemente. Poweroff suele cerrar la conexión abruptamente.
+                // Esperamos un momento. Si es un container, la conexión morirá casi al instante.
                 cmd.join(2, TimeUnit.SECONDS)
 
                 Result.success(Unit)
@@ -152,9 +153,15 @@ class JvmSshClient : SshClient {
                 session.close()
             }
         } catch (e: Exception) {
-            // Es normal que lance excepción si el servidor se apaga antes de cerrar sesión limpiamente
-            // Puedes filtrar si es un error de "Connection reset" y contarlo como éxito
-            Result.failure(e)
+            // En Docker, al matar el PID 1, la conexión SSH se corta abruptamente (Broken pipe).
+            // Esto técnicamente es una excepción, pero significa que el apagado funcionó.
+            // Lo tratamos como éxito si el mensaje sugiere cierre de conexión.
+            val msg = e.message?.lowercase() ?: ""
+            if (msg.contains("broken pipe") || msg.contains("stream closed") || msg.contains("connection reset")) {
+                Result.success(Unit)
+            } else {
+                Result.failure(e)
+            }
         } finally {
             if (client.isConnected) client.disconnect()
         }
