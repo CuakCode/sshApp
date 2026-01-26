@@ -16,37 +16,8 @@ class JvmSshClient : SshClient {
 
     override suspend fun fetchMetrics(server: Server): Result<ServerMetrics> = withContext(Dispatchers.IO) {
         val client = SSHClient()
-        // SEGURIDAD: PromiscuousVerifier es solo para pruebas. En producción usar known_hosts.
-        client.addHostKeyVerifier(PromiscuousVerifier())
-
         try {
-            println("SSH: Conectando a ${server.ip}...")
-            client.connect(server.ip, server.port)
-
-            val cleanPassword = server.password?.trim() ?: ""
-
-            // --- FASE 1: AUTENTICACIÓN ---
-            if (!server.sshKeyPath.isNullOrBlank()) {
-                val keyProvider: KeyProvider = client.loadKeys(server.sshKeyPath)
-                client.authPublickey(server.username, keyProvider)
-            } else {
-                try {
-                    client.authPassword(server.username, cleanPassword)
-                } catch (e: Exception) {
-                    println("SSH: authPassword falló. Probando Interactive...")
-                    val kbi = AuthKeyboardInteractive(object : ChallengeResponseProvider {
-                        override fun getSubmethods(): List<String> = emptyList()
-                        override fun init(resource: Resource<*>?, name: String?, instruction: String?) {}
-                        override fun shouldRetry(): Boolean = false
-                        override fun getResponse(prompt: String?, echo: Boolean): CharArray {
-                            return cleanPassword.toCharArray()
-                        }
-                    })
-                    client.auth(server.username, kbi)
-                }
-            }
-
-            // --- FASE 2: EJECUCIÓN ROBUSTA (UNO POR UNO) ---
+            client.connectAndAuthenticate(server)
 
             // 1. CPU
             val cpuVal = try {
@@ -75,21 +46,15 @@ class JvmSshClient : SshClient {
                 0.0
             }
 
-            // 4. Temperatura (NUEVO)
-            // Leemos thermal_zone0, que es estándar en Linux (millidegrees).
-            // Si falla (común en Docker/VM), devuelve 0.0.
+            // 4. Temperatura
             val tempVal = try {
                 val cmd = "cat /sys/class/thermal/thermal_zone0/temp"
                 val raw = client.execOneCommand(cmd)
-                // El valor suele venir en miligrados (ej: 45000 -> 45.0)
                 (raw.toDoubleOrNull() ?: 0.0) / 1000.0
             } catch (e: Exception) {
-                // Es normal que falle en Docker si no se monta /sys
-                println("SSH Warn: Fallo al leer Temperatura (Normal en Docker/VM): ${e.message}")
+                println("SSH Warn: Fallo al leer Temperatura: ${e.message}")
                 0.0
             }
-
-            println("SSH: Métricas -> CPU: $cpuVal%, RAM: $ramVal%, Disk: $diskVal%, Temp: $tempVal°C")
 
             val metrics = ServerMetrics(
                 cpuPercentage = cpuVal,
@@ -101,7 +66,6 @@ class JvmSshClient : SshClient {
             Result.success(metrics)
 
         } catch (e: Exception) {
-            println("SSH ERROR FINAL: ${e.message}")
             e.printStackTrace()
             Result.failure(e)
         } finally {
@@ -111,11 +75,8 @@ class JvmSshClient : SshClient {
 
     override suspend fun executeCommand(server: Server, command: String): Result<String> = withContext(Dispatchers.IO) {
         val client = SSHClient()
-        client.addHostKeyVerifier(PromiscuousVerifier())
         try {
-            client.connect(server.ip, server.port)
-            // Auth simplificado para el ejemplo
-            client.authPassword(server.username, server.password ?: "")
+            client.connectAndAuthenticate(server)
             val output = client.execOneCommand(command)
             Result.success(output)
         } catch (e: Exception) {
@@ -125,9 +86,37 @@ class JvmSshClient : SshClient {
         }
     }
 
-    // --- FUNCIÓN HELPER PRIVADA ---
+    private fun SSHClient.connectAndAuthenticate(server: Server) {
+        // SEGURIDAD: PromiscuousVerifier acepta cualquier host key. En prod usar known_hosts.
+        addHostKeyVerifier(PromiscuousVerifier())
+        connect(server.ip, server.port)
+
+        val cleanPassword = server.password?.trim() ?: ""
+
+        if (!server.sshKeyPath.isNullOrBlank()) {
+            val keyProvider: KeyProvider = loadKeys(server.sshKeyPath)
+            authPublickey(server.username, keyProvider)
+        } else {
+            try {
+                // Intento estándar
+                authPassword(server.username, cleanPassword)
+            } catch (e: Exception) {
+                // Fallback: Keyboard Interactive (común en Ubuntu/Alpine recientes)
+                val kbi = AuthKeyboardInteractive(object : ChallengeResponseProvider {
+                    override fun getSubmethods(): List<String> = emptyList()
+                    override fun init(resource: Resource<*>?, name: String?, instruction: String?) {}
+                    override fun shouldRetry(): Boolean = false
+                    override fun getResponse(prompt: String?, echo: Boolean): CharArray {
+                        return cleanPassword.toCharArray()
+                    }
+                })
+                auth(server.username, kbi)
+            }
+        }
+    }
+
     private fun SSHClient.execOneCommand(command: String): String {
-        val session = this.startSession()
+        val session = startSession()
         return try {
             val cmd = session.exec(command)
             val output = cmd.inputStream.reader().readText().trim()
