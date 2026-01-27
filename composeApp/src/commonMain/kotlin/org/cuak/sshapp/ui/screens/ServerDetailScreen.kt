@@ -16,20 +16,25 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.koin.koinScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
-import org.cuak.sshapp.models.Server
-import org.cuak.sshapp.models.ServerMetrics
 import org.cuak.sshapp.ui.components.ResourceGauge
-import org.cuak.sshapp.ui.components.getIconByName
 import org.cuak.sshapp.ui.theme.StatusError
 import org.cuak.sshapp.ui.theme.StatusSuccess
 import org.cuak.sshapp.ui.theme.StatusWarning
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.foundation.background
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.draw.alpha
+
+import androidx.compose.ui.text.input.KeyboardType
+
+
 
 data class ServerDetailScreen(val serverId: Long) : Screen {
 
@@ -127,15 +132,16 @@ data class ServerDetailScreen(val serverId: Long) : Screen {
                 // Contenido según la pestaña seleccionada
                 Box(modifier = Modifier.fillMaxSize()) {
                     when (selectedTabIndex) {
-                        0 -> MonitorTabContent(state) { viewModel.fetchMetrics() }
+                        0 -> {
+                            LaunchedEffect(Unit) {
+                                viewModel.fetchMetrics()
+                            }
+                            MonitorTabContent(state) { viewModel.fetchMetrics() }
+                        }
                         1 -> PlaceholderTab("Gestión de Procesos (Próximamente)")
-                        // 2. Conectamos la nueva pestaña
                         2 -> TerminalTabContent(
                             output = viewModel.terminalOutput,
-                            input = viewModel.terminalInput,
-                            onInputChange = { viewModel.terminalInput = it },
-                            onSend = { viewModel.sendTerminalCommand(it) },
-                            onSpecialKey = { viewModel.sendSpecialKey(it) },
+                            onSendInput = { input -> viewModel.sendInput(input) },
                             onStart = { viewModel.startTerminal() }
                         )
                     }
@@ -342,32 +348,41 @@ fun getStatusColor(value: Double, warningThreshold: Double, errorThreshold: Doub
         else -> StatusError
     }
 }
+// Asegúrate de añadir estos imports
 
 @Composable
 fun TerminalTabContent(
     output: String,
-    input: String,
-    onInputChange: (String) -> Unit,
-    onSend: (String) -> Unit,
-    onSpecialKey: (String) -> Unit,
+    onSendInput: (String) -> Unit,
     onStart: () -> Unit
 ) {
-    // Auto-scroll al final
     val scrollState = rememberScrollState()
+
+    // Configuración del teclado invisible
+    var hiddenInput by remember { mutableStateOf(" ") } // Espacio como "ancla"
+    val focusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+    // Auto-scroll al final
     LaunchedEffect(output) {
         scrollState.animateScrollTo(scrollState.maxValue)
     }
 
-    // Iniciar conexión al entrar (solo una vez)
+    // Iniciar conexión y ABRIR TECLADO automáticamente al entrar
     LaunchedEffect(Unit) {
         onStart()
+        // Pequeño delay para asegurar que la UI está lista antes de pedir foco
+        kotlinx.coroutines.delay(300)
+        focusRequester.requestFocus()
+        keyboardController?.show()
     }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF1E1E1E)) // Fondo oscuro tipo terminal
+            .background(Color(0xFF1E1E1E))
             .padding(8.dp)
+        // IMPORTANTE: Quitamos el clickable de aquí para permitir seleccionar texto
     ) {
         // --- PANTALLA DE SALIDA ---
         Box(
@@ -375,55 +390,78 @@ fun TerminalTabContent(
                 .weight(1f)
                 .fillMaxWidth()
                 .padding(4.dp)
+                .background(Color.Black, RoundedCornerShape(4.dp))
+                .padding(8.dp)
         ) {
-            Text(
-                text = output,
-                color = Color(0xFF00FF00), // Verde hacker clásico
-                fontFamily = FontFamily.Monospace,
-                fontSize = MaterialTheme.typography.bodySmall.fontSize,
-                modifier = Modifier.verticalScroll(scrollState)
+            // Permitimos COPIAR texto
+            SelectionContainer {
+                Text(
+                    text = output,
+                    color = Color(0xFF00FF00),
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 13.sp,
+                    lineHeight = 16.sp,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(scrollState)
+                )
+            }
+
+            // --- TEXTFIELD INVISIBLE (El motor de escritura) ---
+            TextField(
+                value = hiddenInput,
+                onValueChange = { newValue ->
+                    // Lógica robusta: detectamos cambios respecto al estado anterior " "
+                    if (newValue.length < 1) {
+                        // Se borró el espacio -> Backspace
+                        onSendInput("\u007F")
+                    } else if (newValue.length > 1) {
+                        // Se escribió algo nuevo
+                        val char = newValue.substring(1) // Todo después del espacio inicial
+                        onSendInput(char)
+                    }
+                    // Siempre reseteamos al ancla " "
+                    hiddenInput = " "
+                },
+                modifier = Modifier
+                    .alpha(0f) // Invisible
+                    .size(1.dp) // Minúsculo
+                    .focusRequester(focusRequester),
+                keyboardOptions = KeyboardOptions(
+                    autoCorrect = false, // VITAL: Sin autocorrector
+                    keyboardType = KeyboardType.Ascii, // Teclado simple
+                    imeAction = ImeAction.None
+                ),
+                singleLine = true
             )
         }
 
-        // --- BARRA DE TECLAS ESPECIALES ---
+        // --- BARRA DE CONTROL ---
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 4.dp),
+            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            // Códigos ASCII / ANSI
-            val ctrlC = "\u0003"
-            val arrowUp = "\u001B[A"
-            val arrowDown = "\u001B[B"
-            val ctrlR = "\u0012"
-            val tab = "\u0009"
+            // Botones de control
+            TerminalButton("Esc", onClick = { onSendInput("\u001B") }, color = MaterialTheme.colorScheme.secondary)
+            TerminalButton("Ctrl+C", onClick = { onSendInput("\u0003") }, color = MaterialTheme.colorScheme.error)
 
-            TerminalButton("Ctrl+C", onClick = { onSpecialKey(ctrlC) }, color = MaterialTheme.colorScheme.error)
-            TerminalButton("⬆", onClick = { onSpecialKey(arrowUp) })
-            TerminalButton("⬇", onClick = { onSpecialKey(arrowDown) })
-            TerminalButton("Ctrl+R", onClick = { onSpecialKey(ctrlR) })
-            TerminalButton("TAB", onClick = { onSpecialKey(tab) })
+            // Botón para recuperar el teclado si se cierra
+            TerminalButton("⌨️", onClick = {
+                focusRequester.requestFocus()
+                keyboardController?.show()
+            })
+
+            TerminalButton("⬆", onClick = { onSendInput("\u001B[A") })
+            TerminalButton("⬇", onClick = { onSendInput("\u001B[B") })
+            TerminalButton("TAB", onClick = { onSendInput("\u0009") })
+            TerminalButton("Enter", onClick = { onSendInput("\n") })
         }
 
-        // --- CAMPO DE ENTRADA ---
-        OutlinedTextField(
-            value = input,
-            onValueChange = onInputChange,
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("Escribe un comando...", color = Color.Gray) },
-            singleLine = true,
-            textStyle = LocalTextStyle.current.copy(
-                color = Color.White,
-                fontFamily = FontFamily.Monospace
-            ),
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-            keyboardActions = KeyboardActions(onSend = { onSend(input) }),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = Color(0xFF00FF00),
-                unfocusedBorderColor = Color.Gray,
-                cursorColor = Color(0xFF00FF00)
-            )
+        Text(
+            "Pulsa ⌨️ si el teclado se cierra",
+            color = Color.Gray,
+            fontSize = 10.sp,
+            modifier = Modifier.align(Alignment.CenterHorizontally)
         )
     }
 }

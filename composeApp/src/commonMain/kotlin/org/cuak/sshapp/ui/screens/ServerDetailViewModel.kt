@@ -7,12 +7,12 @@ import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
 import kotlinx.coroutines.launch
 import org.cuak.sshapp.domain.ssh.SshClient
+import org.cuak.sshapp.domain.ssh.SshTerminalSession
 import org.cuak.sshapp.models.Server
 import org.cuak.sshapp.models.ServerMetrics
 import org.cuak.sshapp.repository.ServerRepository
-import org.cuak.sshapp.domain.ssh.SshTerminalSession
+import org.cuak.sshapp.utils.AnsiUtils
 
-// Estados de la UI para la pestaña de métricas
 sealed class DetailUiState {
     object Idle : DetailUiState()
     object Loading : DetailUiState()
@@ -25,120 +25,118 @@ class ServerDetailViewModel(
     private val sshClient: SshClient
 ) : ScreenModel {
 
-    // --- Estado General ---
     var server by mutableStateOf<Server?>(null)
         private set
 
-    // --- Estado de Métricas ---
     var uiState by mutableStateOf<DetailUiState>(DetailUiState.Idle)
         private set
 
-    // --- Estado de Terminal ---
     private var terminalSession: SshTerminalSession? = null
 
-    // Salida de texto de la terminal (lo que se muestra en pantalla)
+    // Output visual
     var terminalOutput by mutableStateOf("")
         private set
 
-    // Entrada de texto (lo que el usuario está escribiendo)
-    var terminalInput by mutableStateOf("")
-
-    // --- Lógica de Inicialización ---
-
+    // --- Métricas ---
     fun loadServer(serverId: Long) {
         screenModelScope.launch {
             server = repository.getServerById(serverId)
-            // Una vez cargado el servidor, intentamos conectar automáticamente para métricas
             server?.let { fetchMetrics() }
         }
     }
 
-    // --- Lógica de Métricas y Gestión ---
-
     fun fetchMetrics() {
         val currentServer = server ?: return
-
         screenModelScope.launch {
             uiState = DetailUiState.Loading
-
-            // Llamada al cliente SSH (JvmSshClient en Android/Desktop)
             val result = sshClient.fetchMetrics(currentServer)
-
             uiState = result.fold(
-                onSuccess = { metrics -> DetailUiState.Success(metrics) },
-                onFailure = { error -> DetailUiState.Error(error.message ?: "Error desconocido") }
+                onSuccess = { DetailUiState.Success(it) },
+                onFailure = { DetailUiState.Error(it.message ?: "Error") }
             )
         }
     }
 
     fun shutdownServer() {
         val currentServer = server ?: return
-
-        screenModelScope.launch {
-            val result = sshClient.shutdown(currentServer)
-
-            result.fold(
-                onSuccess = {
-                    println("Comando de apagado enviado con éxito")
-                    // Opcional: Podrías actualizar el estado de UI o navegar atrás
-                },
-                onFailure = { error ->
-                    println("Error al apagar: ${error.message}")
-                }
-            )
-        }
+        screenModelScope.launch { sshClient.shutdown(currentServer) }
     }
 
-    // --- Lógica de Terminal Interactiva ---
-
+    // --- Terminal ---
     fun startTerminal() {
         val currentServer = server ?: return
-
-        // Si ya hay una sesión activa, no hacemos nada o la reiniciamos (aquí optamos por no duplicar)
         if (terminalSession != null) return
 
         screenModelScope.launch {
-            terminalOutput = "Iniciando conexión segura con ${currentServer.ip}...\n"
+            terminalOutput = "Conectado a ${currentServer.ip}...\n"
 
             sshClient.openTerminal(currentServer).fold(
                 onSuccess = { session ->
                     terminalSession = session
-                    terminalOutput += "Conexión establecida.\n"
 
-                    // Escuchamos el flujo de salida del servidor
-                    session.output.collect { newText ->
-                        // Concatenamos y limitamos el buffer a los últimos 5000 caracteres
-                        // para evitar problemas de memoria en la UI
-                        terminalOutput = (terminalOutput + newText).takeLast(5000)
+                    session.output.collect { newRawText ->
+                        // 1. Limpieza ANSI básica
+                        val textWithoutAnsi = AnsiUtils.stripAnsiCodes(newRawText)
+
+                        // 2. Procesado avanzado (Backspaces y Control Chars)
+                        terminalOutput = processTerminalOutput(terminalOutput, textWithoutAnsi)
                     }
                 },
-                onFailure = { error ->
-                    terminalOutput += "Error al conectar: ${error.message}\n"
-                }
+                onFailure = { terminalOutput += "Error: ${it.message}\n" }
             )
         }
     }
 
-    fun sendTerminalCommand(command: String) {
-        screenModelScope.launch {
-            // Enviamos el comando seguido de un salto de línea para ejecutarlo
-            terminalSession?.write(command + "\n")
-            // Limpiamos el campo de entrada
-            terminalInput = ""
+    /**
+     * Procesa el texto:
+     * 1. Maneja Backspaces (\b o 0x7F) para borrar caracteres.
+     * 2. Elimina caracteres de control no imprimibles (0x00..0x1F) excepto \n.
+     */
+    private fun processTerminalOutput(currentText: String, newText: String): String {
+        val sb = StringBuilder(currentText)
+
+        for (char in newText) {
+            val code = char.code
+
+            // Caso 1: Backspace (Borrar carácter anterior)
+            if (char == '\b' || code == 127) {
+                if (sb.isNotEmpty()) {
+                    sb.deleteAt(sb.length - 1)
+                }
+                continue
+            }
+
+            // Caso 2: Saltos de línea (Permitidos)
+            if (char == '\n') {
+                sb.append(char)
+                continue
+            }
+
+            // Caso 3: Caracteres de Control (Ignorar basura como Bell, Tabs crudos, etc.)
+            // El rango 0..31 son controles. Solo permitimos imprimibles (>= 32).
+            if (code < 32) {
+                // Si es un TAB (\t = 9), podríamos convertirlo a espacios,
+                // pero a veces el echo del servidor ya lo expande.
+                // Si ves que faltan espacios, descomenta la siguiente línea:
+                // if (code == 9) sb.append("    ")
+                continue
+            }
+
+            // Caso 4: Texto normal
+            sb.append(char)
         }
+
+        // Limitar buffer
+        return if (sb.length > 5000) sb.substring(sb.length - 5000) else sb.toString()
     }
 
-    // Envía teclas especiales que no requieren salto de línea automático (como Ctrl+C o flechas)
-    fun sendSpecialKey(keyCode: String) {
+    fun sendInput(input: String) {
         screenModelScope.launch {
-            terminalSession?.write(keyCode)
+            terminalSession?.write(input)
         }
     }
-
-    // --- Limpieza ---
 
     override fun onDispose() {
-        // Cerramos la sesión SSH si está abierta al salir de la pantalla
         terminalSession?.close()
         terminalSession = null
         super.onDispose()
