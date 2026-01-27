@@ -10,8 +10,9 @@ import org.cuak.sshapp.domain.ssh.SshClient
 import org.cuak.sshapp.models.Server
 import org.cuak.sshapp.models.ServerMetrics
 import org.cuak.sshapp.repository.ServerRepository
+import org.cuak.sshapp.domain.ssh.SshTerminalSession
 
-// Estados de la UI
+// Estados de la UI para la pestaña de métricas
 sealed class DetailUiState {
     object Idle : DetailUiState()
     object Loading : DetailUiState()
@@ -24,19 +25,35 @@ class ServerDetailViewModel(
     private val sshClient: SshClient
 ) : ScreenModel {
 
+    // --- Estado General ---
     var server by mutableStateOf<Server?>(null)
         private set
 
+    // --- Estado de Métricas ---
     var uiState by mutableStateOf<DetailUiState>(DetailUiState.Idle)
         private set
+
+    // --- Estado de Terminal ---
+    private var terminalSession: SshTerminalSession? = null
+
+    // Salida de texto de la terminal (lo que se muestra en pantalla)
+    var terminalOutput by mutableStateOf("")
+        private set
+
+    // Entrada de texto (lo que el usuario está escribiendo)
+    var terminalInput by mutableStateOf("")
+
+    // --- Lógica de Inicialización ---
 
     fun loadServer(serverId: Long) {
         screenModelScope.launch {
             server = repository.getServerById(serverId)
-            // Una vez cargado el servidor, intentamos conectar automáticamente
+            // Una vez cargado el servidor, intentamos conectar automáticamente para métricas
             server?.let { fetchMetrics() }
         }
     }
+
+    // --- Lógica de Métricas y Gestión ---
 
     fun fetchMetrics() {
         val currentServer = server ?: return
@@ -53,24 +70,77 @@ class ServerDetailViewModel(
             )
         }
     }
+
     fun shutdownServer() {
         val currentServer = server ?: return
 
         screenModelScope.launch {
-            // Opcional: Podrías añadir un estado "ShuttingDown" a tu UiState si quieres mostrar un spinner específico
             val result = sshClient.shutdown(currentServer)
 
             result.fold(
                 onSuccess = {
-                    // El servidor se ha mandado apagar.
-                    // Podrías navegar atrás o mostrar un Snackbar
                     println("Comando de apagado enviado con éxito")
+                    // Opcional: Podrías actualizar el estado de UI o navegar atrás
                 },
                 onFailure = { error ->
-                    // Manejo de errores (ej. contraseña sudo incorrecta)
                     println("Error al apagar: ${error.message}")
                 }
             )
         }
+    }
+
+    // --- Lógica de Terminal Interactiva ---
+
+    fun startTerminal() {
+        val currentServer = server ?: return
+
+        // Si ya hay una sesión activa, no hacemos nada o la reiniciamos (aquí optamos por no duplicar)
+        if (terminalSession != null) return
+
+        screenModelScope.launch {
+            terminalOutput = "Iniciando conexión segura con ${currentServer.ip}...\n"
+
+            sshClient.openTerminal(currentServer).fold(
+                onSuccess = { session ->
+                    terminalSession = session
+                    terminalOutput += "Conexión establecida.\n"
+
+                    // Escuchamos el flujo de salida del servidor
+                    session.output.collect { newText ->
+                        // Concatenamos y limitamos el buffer a los últimos 5000 caracteres
+                        // para evitar problemas de memoria en la UI
+                        terminalOutput = (terminalOutput + newText).takeLast(5000)
+                    }
+                },
+                onFailure = { error ->
+                    terminalOutput += "Error al conectar: ${error.message}\n"
+                }
+            )
+        }
+    }
+
+    fun sendTerminalCommand(command: String) {
+        screenModelScope.launch {
+            // Enviamos el comando seguido de un salto de línea para ejecutarlo
+            terminalSession?.write(command + "\n")
+            // Limpiamos el campo de entrada
+            terminalInput = ""
+        }
+    }
+
+    // Envía teclas especiales que no requieren salto de línea automático (como Ctrl+C o flechas)
+    fun sendSpecialKey(keyCode: String) {
+        screenModelScope.launch {
+            terminalSession?.write(keyCode)
+        }
+    }
+
+    // --- Limpieza ---
+
+    override fun onDispose() {
+        // Cerramos la sesión SSH si está abierta al salir de la pantalla
+        terminalSession?.close()
+        terminalSession = null
+        super.onDispose()
     }
 }

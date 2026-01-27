@@ -23,6 +23,13 @@ import org.cuak.sshapp.ui.components.getIconByName
 import org.cuak.sshapp.ui.theme.StatusError
 import org.cuak.sshapp.ui.theme.StatusSuccess
 import org.cuak.sshapp.ui.theme.StatusWarning
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.foundation.background
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.foundation.shape.RoundedCornerShape
 
 data class ServerDetailScreen(val serverId: Long) : Screen {
 
@@ -122,7 +129,15 @@ data class ServerDetailScreen(val serverId: Long) : Screen {
                     when (selectedTabIndex) {
                         0 -> MonitorTabContent(state) { viewModel.fetchMetrics() }
                         1 -> PlaceholderTab("Gestión de Procesos (Próximamente)")
-                        2 -> PlaceholderTab("Terminal SSH (Próximamente)")
+                        // 2. Conectamos la nueva pestaña
+                        2 -> TerminalTabContent(
+                            output = viewModel.terminalOutput,
+                            input = viewModel.terminalInput,
+                            onInputChange = { viewModel.terminalInput = it },
+                            onSend = { viewModel.sendTerminalCommand(it) },
+                            onSpecialKey = { viewModel.sendSpecialKey(it) },
+                            onStart = { viewModel.startTerminal() }
+                        )
                     }
                 }
             }
@@ -325,5 +340,103 @@ fun getStatusColor(value: Double, warningThreshold: Double, errorThreshold: Doub
         value < warningThreshold -> StatusSuccess
         value <= errorThreshold -> StatusWarning
         else -> StatusError
+    }
+}
+
+@Composable
+fun TerminalTabContent(
+    output: String,
+    input: String,
+    onInputChange: (String) -> Unit,
+    onSend: (String) -> Unit,
+    onSpecialKey: (String) -> Unit,
+    onStart: () -> Unit
+) {
+    // Auto-scroll al final
+    val scrollState = rememberScrollState()
+    LaunchedEffect(output) {
+        scrollState.animateScrollTo(scrollState.maxValue)
+    }
+
+    // Iniciar conexión al entrar (solo una vez)
+    LaunchedEffect(Unit) {
+        onStart()
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF1E1E1E)) // Fondo oscuro tipo terminal
+            .padding(8.dp)
+    ) {
+        // --- PANTALLA DE SALIDA ---
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .padding(4.dp)
+        ) {
+            Text(
+                text = output,
+                color = Color(0xFF00FF00), // Verde hacker clásico
+                fontFamily = FontFamily.Monospace,
+                fontSize = MaterialTheme.typography.bodySmall.fontSize,
+                modifier = Modifier.verticalScroll(scrollState)
+            )
+        }
+
+        // --- BARRA DE TECLAS ESPECIALES ---
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            // Códigos ASCII / ANSI
+            val ctrlC = "\u0003"
+            val arrowUp = "\u001B[A"
+            val arrowDown = "\u001B[B"
+            val ctrlR = "\u0012"
+            val tab = "\u0009"
+
+            TerminalButton("Ctrl+C", onClick = { onSpecialKey(ctrlC) }, color = MaterialTheme.colorScheme.error)
+            TerminalButton("⬆", onClick = { onSpecialKey(arrowUp) })
+            TerminalButton("⬇", onClick = { onSpecialKey(arrowDown) })
+            TerminalButton("Ctrl+R", onClick = { onSpecialKey(ctrlR) })
+            TerminalButton("TAB", onClick = { onSpecialKey(tab) })
+        }
+
+        // --- CAMPO DE ENTRADA ---
+        OutlinedTextField(
+            value = input,
+            onValueChange = onInputChange,
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("Escribe un comando...", color = Color.Gray) },
+            singleLine = true,
+            textStyle = LocalTextStyle.current.copy(
+                color = Color.White,
+                fontFamily = FontFamily.Monospace
+            ),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+            keyboardActions = KeyboardActions(onSend = { onSend(input) }),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Color(0xFF00FF00),
+                unfocusedBorderColor = Color.Gray,
+                cursorColor = Color(0xFF00FF00)
+            )
+        )
+    }
+}
+
+@Composable
+fun TerminalButton(text: String, onClick: () -> Unit, color: Color = MaterialTheme.colorScheme.primaryContainer) {
+    Button(
+        onClick = onClick,
+        colors = ButtonDefaults.buttonColors(containerColor = color),
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+        shape = RoundedCornerShape(8.dp),
+        modifier = Modifier.height(36.dp)
+    ) {
+        Text(text, fontSize = MaterialTheme.typography.labelSmall.fontSize, color = Color.White)
     }
 }

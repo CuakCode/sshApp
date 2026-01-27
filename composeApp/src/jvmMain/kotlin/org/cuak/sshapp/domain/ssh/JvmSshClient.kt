@@ -11,6 +11,13 @@ import net.schmizz.sshj.userauth.password.Resource
 import org.cuak.sshapp.models.Server
 import org.cuak.sshapp.models.ServerMetrics
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.isActive
+import net.schmizz.sshj.connection.channel.direct.Session
+import java.io.OutputStream
+import kotlin.coroutines.coroutineContext
 
 class JvmSshClient : SshClient {
 
@@ -164,6 +171,83 @@ class JvmSshClient : SshClient {
             }
         } finally {
             if (client.isConnected) client.disconnect()
+        }
+    }
+
+    override suspend fun openTerminal(server: Server): Result<SshTerminalSession> = withContext(Dispatchers.IO) {
+        val client = SSHClient()
+        try {
+            // Reutilizamos la lógica de conexión existente (extraer a un método privado si es necesario)
+            client.addHostKeyVerifier(PromiscuousVerifier())
+            client.connect(server.ip, server.port)
+
+            // Lógica de autenticación (Copiada de tu implementación actual o extraída a función helper)
+            val cleanPassword = server.password?.trim() ?: ""
+            if (!server.sshKeyPath.isNullOrBlank()) {
+                val keyProvider = client.loadKeys(server.sshKeyPath)
+                client.authPublickey(server.username, keyProvider)
+            } else {
+                client.authPassword(server.username, cleanPassword)
+            }
+
+            // Iniciamos la sesión y la shell
+            val session = client.startSession()
+            session.allocateDefaultPTY() // Pseudo-terminal para que comandos interactivos como 'top' o 'sudo' funcionen
+            val shell = session.startShell()
+
+            Result.success(JvmTerminalSession(client, session, shell))
+        } catch (e: Exception) {
+            e.printStackTrace()
+            if (client.isConnected) client.disconnect()
+            Result.failure(e)
+        }
+    }
+
+    // Clase interna para manejar la sesión específica de SSHJ
+    private class JvmTerminalSession(
+        private val client: SSHClient,
+        private val session: Session,
+        private val shell: Session.Shell
+    ) : SshTerminalSession {
+
+        private val outputStream: OutputStream = shell.outputStream
+
+        override val output: Flow<String> = flow {
+            val reader = shell.inputStream
+            val buffer = ByteArray(1024)
+            try {
+                while (coroutineContext.isActive && shell.isOpen) {
+                    if (reader.available() > 0) {
+                        val read = reader.read(buffer)
+                        if (read == -1) break
+                        val text = String(buffer, 0, read)
+                        emit(text)
+                    } else {
+                        // Pequeña pausa para no saturar la CPU si no hay datos
+                        kotlinx.coroutines.delay(50)
+                    }
+                }
+            } catch (e: Exception) {
+                // Manejo de desconexión
+            }
+        }.flowOn(Dispatchers.IO)
+
+        override suspend fun write(input: String) = withContext(Dispatchers.IO) {
+            try {
+                outputStream.write(input.toByteArray())
+                outputStream.flush()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+
+        override fun close() {
+            try {
+                session.close()
+                client.disconnect()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 }
