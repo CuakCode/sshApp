@@ -27,6 +27,8 @@ import org.cuak.sshapp.models.ProcessSortOption
 import org.cuak.sshapp.ui.theme.StatusError
 import org.cuak.sshapp.ui.theme.StatusSuccess
 import org.cuak.sshapp.ui.theme.StatusWarning
+import kotlin.math.pow
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -230,6 +232,9 @@ fun UsageBadge(value: Double, thresholdWarning: Double, thresholdError: Double) 
 
     val isHigh = value >= thresholdWarning
 
+    // Formateamos siempre a 2 decimales (ej: 0.0 -> "0.00%", 5.2 -> "5.20%")
+    val displayText = "${formatDecimal(value, 2)}%"
+
     if (isHigh) {
         // Estilo "Alerta" con fondo
         Surface(
@@ -238,7 +243,7 @@ fun UsageBadge(value: Double, thresholdWarning: Double, thresholdError: Double) 
             border = BorderStroke(1.dp, color.copy(alpha = 0.4f))
         ) {
             Text(
-                text = "${value.toInt()}%",
+                text = displayText,
                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                 style = MaterialTheme.typography.labelSmall,
                 color = color,
@@ -246,11 +251,28 @@ fun UsageBadge(value: Double, thresholdWarning: Double, thresholdError: Double) 
             )
         }
     } else {
-        // Estilo "Normal" limpio
+        // Estilo "Normal"
         Text(
-            text = "${value.toInt()}%",
+            text = displayText,
             style = MaterialTheme.typography.bodyMedium,
-            color = color.copy(alpha = 0.8f)
+            color = color.copy(alpha = 0.8f),
+            // Usamos fuente monoespaciada para que los números se alineen bien verticalmente
+            fontFamily = FontFamily.Monospace
         )
     }
+}
+
+// Función helper para formatear decimales en KMP (Common)
+fun formatDecimal(value: Double, decimals: Int): String {
+    val factor = 10.0.pow(decimals)
+    val rounded = (value * factor).roundToInt() / factor
+    val string = rounded.toString()
+
+    // Asegurar que siempre tenga los decimales pedidos (rellenar con ceros)
+    val parts = string.split(".")
+    val integerPart = parts[0]
+    val fractionalPart = if (parts.size > 1) parts[1] else ""
+
+    val paddedFraction = fractionalPart.padEnd(decimals, '0')
+    return "$integerPart.$paddedFraction"
 }

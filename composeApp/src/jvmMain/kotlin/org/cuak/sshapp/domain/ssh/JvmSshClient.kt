@@ -296,14 +296,12 @@ class JvmSshClient : SshClient {
 
             val processes = if (server.type == DeviceType.CAMERA) {
                 // ESTRATEGIA CÁMARA (BusyBox Top)
-                // Usamos top en modo batch (-b) una vez (-n 1)
                 val cmd = "top -b -n 1"
                 val output = client.execOneCommand(cmd)
                 parseBusyBoxTop(output)
             } else {
-                // ESTRATEGIA SERVIDOR (Linux Standard PS)
-                // -e: todos, -o: formato custom, --sort: ordenar por cpu descendente
-                // Formato: PID USER %CPU %MEM COMMAND
+                // ESTRATEGIA SERVIDOR (Linux PS)
+                // Obtenemos los top 50 procesos por CPU
                 val cmd = "ps -e -o pid,user,%cpu,%mem,comm --sort=-%cpu | head -n 50"
                 val output = client.execOneCommand(cmd)
                 parseLinuxPs(output)
@@ -319,30 +317,32 @@ class JvmSshClient : SshClient {
 
     private fun parseLinuxPs(output: String): List<ProcessInfo> {
         val list = mutableListOf<ProcessInfo>()
-        val lines = output.lines().drop(1) // Saltamos cabecera: PID USER %CPU %MEM COMMAND
+        val lines = output.lines().drop(1) // Saltamos cabecera
 
         for (line in lines) {
             if (line.isBlank()) continue
             val parts = line.trim().split("\\s+".toRegex())
             if (parts.size >= 5) {
                 try {
+                    val commandName = parts.subList(4, parts.size).joinToString(" ")
+
+                    // FILTRO: Ignoramos el propio proceso 'ps' y 'head' que usamos para consultar
+                    if (commandName == "ps" || commandName == "head") continue
+
                     list.add(ProcessInfo(
                         pid = parts[0],
                         user = parts[1],
                         cpuUsage = parts[2].toDoubleOrNull() ?: 0.0,
                         memUsage = parts[3].toDoubleOrNull() ?: 0.0,
-                        command = parts.subList(4, parts.size).joinToString(" ")
+                        command = commandName
                     ))
-                } catch (e: Exception) { /* ignore line */ }
+                } catch (e: Exception) { /* ignore */ }
             }
         }
         return list
     }
 
     private fun parseBusyBoxTop(output: String): List<ProcessInfo> {
-        // Output típico Yi Camera:
-        // PID  PPID USER     STAT   VSZ %VSZ CPU %CPU COMMAND
-        // 1416    1 root     S     36388 59.5   0 56.0 ./rmm
         val list = mutableListOf<ProcessInfo>()
         val lines = output.lines()
 
@@ -355,16 +355,20 @@ class JvmSshClient : SshClient {
             if (!headerFound || line.isBlank()) continue
 
             val parts = line.trim().split("\\s+".toRegex())
-            // Necesitamos al menos hasta el comando.
             // Indices Yi: PID(0) PPID(1) USER(2) STAT(3) VSZ(4) %VSZ(5) CPU(6) %CPU(7) COMMAND(8)
             if (parts.size >= 9) {
                 try {
+                    val commandName = parts.subList(8, parts.size).joinToString(" ")
+
+                    // FILTRO: Ignoramos 'top' en la cámara
+                    if (commandName.contains("top")) continue
+
                     list.add(ProcessInfo(
                         pid = parts[0],
-                        user = parts[2], // User está en el índice 2
-                        cpuUsage = parts[7].replace("%","").toDoubleOrNull() ?: 0.0, // %CPU
-                        memUsage = parts[5].replace("%","").toDoubleOrNull() ?: 0.0, // %VSZ (Memoria virtual aprox)
-                        command = parts.subList(8, parts.size).joinToString(" ")
+                        user = parts[2],
+                        cpuUsage = parts[7].replace("%","").toDoubleOrNull() ?: 0.0,
+                        memUsage = parts[5].replace("%","").toDoubleOrNull() ?: 0.0,
+                        command = commandName
                     ))
                 } catch (e: Exception) { /* ignore */ }
             }
