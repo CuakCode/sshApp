@@ -35,6 +35,7 @@ import org.cuak.sshapp.models.ServerStatus
 import org.cuak.sshapp.ui.theme.*
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
+
 // ui/components/ServerCard.kt
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -88,13 +89,27 @@ fun ServerCard(
     }
 
 }
-fun getIconByName(iconName: String): ImageVector {
-    return when (iconName) {
+fun getIconByName(name: String): ImageVector {
+    // Usamos lowercase para evitar problemas si se guarda en mayúsculas por error
+    return when (name.lowercase()) {
+        // --- Servidores / Redes ---
         "dns" -> Icons.Default.Dns
-        "storage" -> Icons.Default.Storage
         "computer" -> Icons.Default.Computer
         "router" -> Icons.Default.Router
         "cloud" -> Icons.Default.Cloud
+        "storage" -> Icons.Default.Storage
+        "memory" -> Icons.Default.Memory
+
+        // --- Cámaras / Video / Seguridad ---
+        "videocam" -> Icons.Default.Videocam
+        "camera_alt" -> Icons.Default.CameraAlt
+        "security" -> Icons.Default.Security
+        "cast_connected" -> Icons.Default.CastConnected
+
+        // --- Otros ---
+        "smart_toy" -> Icons.Default.SmartToy
+
+        // Fallback por defecto si el nombre no existe o es antiguo
         else -> Icons.Default.Dns
     }
 }

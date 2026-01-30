@@ -11,6 +11,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import org.cuak.sshapp.models.DeviceType
 import org.cuak.sshapp.models.Server
 import org.cuak.sshapp.models.ServerStatus
 import org.cuak.sshapp.network.ConnectivityManager
@@ -71,15 +72,40 @@ class HomeViewModel(private val repository: ServerRepository) : ScreenModel {
     fun dismissOptions() { selectedServer = null }
 
     // --- Operaciones CRUD ---
-    fun addServer(name: String, ip: String, port: Int, user: String, pass: String?, keyPath: String?, iconName: String) {
+    // AÑADIDO: Parámetro 'type'
+    fun addServer(name: String, ip: String, port: Int, user: String, pass: String?, keyPath: String?, iconName: String, type: DeviceType) {
         screenModelScope.launch {
-            repository.addServer(Server(name = name, ip = ip, port = port, username = user, password = pass, sshKeyPath = keyPath, iconName = iconName))
+            repository.addServer(
+                Server(
+                    name = name,
+                    ip = ip,
+                    port = port,
+                    username = user,
+                    password = pass,
+                    sshKeyPath = keyPath,
+                    iconName = iconName,
+                    type = type // Guardamos el tipo
+                )
+            )
         }
     }
 
-    fun updateServer(id: Long, name: String, ip: String, port: Int, user: String, pass: String?, key: String?, icon: String) {
+    // AÑADIDO: Parámetro 'type'
+    fun updateServer(id: Long, name: String, ip: String, port: Int, user: String, pass: String?, key: String?, icon: String, type: DeviceType) {
         screenModelScope.launch {
-            repository.updateServer(Server(id = id, name = name, ip = ip, port = port, username = user, password = pass, sshKeyPath = key, iconName = icon))
+            repository.updateServer(
+                Server(
+                    id = id,
+                    name = name,
+                    ip = ip,
+                    port = port,
+                    username = user,
+                    password = pass,
+                    sshKeyPath = key,
+                    iconName = icon,
+                    type = type // Actualizamos el tipo
+                )
+            )
             dismissOptions()
         }
     }

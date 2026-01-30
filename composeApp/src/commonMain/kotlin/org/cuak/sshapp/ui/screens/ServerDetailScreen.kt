@@ -1,5 +1,6 @@
 package org.cuak.sshapp.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -31,9 +32,12 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.draw.alpha
-
+import androidx.compose.foundation.layout.FlowRow // Asegúrate de que tu versión de Compose lo soporta (1.5+), si no usa un Grid
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.text.input.KeyboardType
-
+import org.cuak.sshapp.models.PortInfo
 
 
 data class ServerDetailScreen(val serverId: Long) : Screen {
@@ -151,6 +155,7 @@ data class ServerDetailScreen(val serverId: Long) : Screen {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun MonitorTabContent(
     state: DetailUiState,
@@ -170,15 +175,9 @@ fun MonitorTabContent(
             is DetailUiState.Error -> ErrorView(state.message, onRetry)
 
             is DetailUiState.Success -> {
-                // 1. FILTRADO PREVIO: Preparamos los datos válidos
-                // Asumimos que 0.0 en RAM o Temperatura es un error de lectura.
+                // 1. FILTRADO PREVIO
                 val validRam = if (state.metrics.ramPercentage > 0.0) state.metrics.ramPercentage else null
-
-                // Filtramos discos que tengan valor (por si alguno falla y da 0.0, aunque 0% lleno es posible, es raro en root)
-                // Si prefieres mostrar discos vacíos, quita el .filter
                 val validDisks = state.metrics.diskUsage
-
-                // Filtramos temperaturas: Solo mostramos las que sean mayores a 0°C
                 val validTemps = state.metrics.temperatures.filterValues { it > 0.0 }
 
                 Column(
@@ -202,14 +201,11 @@ fun MonitorTabContent(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceEvenly
                             ) {
-                                // CPU siempre se muestra (0% es un valor válido)
                                 ResourceGauge("CPU", state.metrics.cpuPercentage)
 
-                                // RAM: Solo se muestra si es válida
                                 if (validRam != null) {
                                     ResourceGauge("RAM", validRam)
                                 } else {
-                                    // Opcional: Mostrar un placeholder si no hay RAM
                                     Text("RAM N/A", color = MaterialTheme.colorScheme.error)
                                 }
                             }
@@ -237,8 +233,25 @@ fun MonitorTabContent(
                         }
                     }
 
+                    // --- TARJETA DE PUERTOS ACTIVOS (NUEVA) ---
+                    if (state.metrics.openPorts.isNotEmpty()) {
+                        ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text(
+                                    "Puertos Activos",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+
+                                // Renderizamos la rejilla colorida
+                                PortsGrid(state.metrics.openPorts)
+                            }
+                        }
+                    }
+
                     // --- TARJETA DE SENSORES (TEMPERATURA) ---
-                    // Lógica Clave: Solo pintamos la tarjeta si hay al menos una temperatura válida
                     if (validTemps.isNotEmpty()) {
                         ElevatedCard(modifier = Modifier.fillMaxWidth()) {
                             Column(modifier = Modifier.padding(16.dp)) {
@@ -250,7 +263,6 @@ fun MonitorTabContent(
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
 
-                                // Iteramos solo sobre las temperaturas válidas
                                 validTemps.forEach { (sensor, temp) ->
                                     Row(
                                         modifier = Modifier
@@ -264,7 +276,6 @@ fun MonitorTabContent(
                                             "$temp°C",
                                             style = MaterialTheme.typography.bodyLarge,
                                             fontWeight = FontWeight.Bold,
-                                            // Usamos tu función de color o la genérica
                                             color = getStatusColor(temp, 50.0, 75.0)
                                         )
                                     }
@@ -272,13 +283,79 @@ fun MonitorTabContent(
                             }
                         }
                     }
-                    // Si validTemps está vacío, esta tarjeta simplemente no se renderiza.
                 }
             }
         }
     }
 }
 
+// --- COMPONENTES AUXILIARES PARA EL DISEÑO DE PUERTOS ---
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun PortsGrid(ports: List<PortInfo>) {
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        ports.forEach { portInfo ->
+            PortChip(portInfo)
+        }
+    }
+}
+
+@Composable
+fun PortChip(info: PortInfo) {
+    // Generación de color determinista basado en el puerto
+    val seed = info.port * 12345
+    val baseColor = Color(
+        red = (seed % 256) / 255f,
+        green = ((seed / 256) % 256) / 255f,
+        blue = ((seed / 65536) % 256) / 255f,
+        alpha = 1f
+    )
+
+    // Fondo pastel suave
+    val backgroundColor = baseColor.copy(alpha = 0.15f)
+    // Borde un poco más fuerte
+    val strokeColor = baseColor.copy(alpha = 0.5f)
+
+    Surface(
+        color = backgroundColor,
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(1.dp, strokeColor),
+        modifier = Modifier.height(50.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+        ) {
+            // Indicador de estado
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .background(StatusSuccess, CircleShape)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+
+            Column {
+                Text(
+                    text = ":${info.port}",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = info.processName.uppercase(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontFamily = FontFamily.Monospace
+                )
+            }
+        }
+    }
+}
 @Composable
 fun DiskUsageBar(label: String, percentage: Double) {
     Column {

@@ -17,7 +17,6 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import org.cuak.sshapp.models.Server
 import org.cuak.sshapp.ui.components.ServerCard
-import org.cuak.sshapp.ui.components.getIconByName
 
 class HomeScreen : Screen {
 
@@ -33,7 +32,7 @@ class HomeScreen : Screen {
         HomeScreenContent(
             viewModel = viewModel,
             onServerClick = { server ->
-                // IMPLEMENTACIÓN ACTUALIZADA: Navegamos a la pantalla de detalles
+                // Navegamos a la pantalla de detalles
                 navigator.push(ServerDetailScreen(serverId = server.id))
             }
         )
@@ -117,19 +116,21 @@ private fun HomeScreenContent(
                     showEditDialog = false
                     viewModel.dismissOptions()
                 },
-                onConfirm = { name, ip, port, user, pass, key, icon ->
-                    viewModel.updateServer(selectedServer.id, name, ip, port, user, pass, key, icon)
+                // AHORA RECIBE 'type'
+                onConfirm = { name, ip, port, user, pass, key, icon, type ->
+                    viewModel.updateServer(selectedServer.id, name, ip, port, user, pass, key, icon, type)
                     showEditDialog = false
                 }
             )
         }
 
-        // 3. Diálogo de Añadir (Nuevo)
+        // 3. Diálogo de Añadir
         if (showAddDialog) {
             ServerFormDialog(
                 onDismiss = { showAddDialog = false },
-                onConfirm = { name, ip, port, user, pass, key, icon ->
-                    viewModel.addServer(name, ip, port, user, pass, key, icon)
+                // AHORA RECIBE 'type'
+                onConfirm = { name, ip, port, user, pass, key, icon, type ->
+                    viewModel.addServer(name, ip, port, user, pass, key, icon, type)
                     showAddDialog = false
                 }
             )

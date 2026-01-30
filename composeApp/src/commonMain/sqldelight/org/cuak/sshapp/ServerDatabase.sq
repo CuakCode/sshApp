@@ -1,16 +1,17 @@
 import kotlin.Int;
-
+import org.cuak.sshapp.models.DeviceType;
 
 -- Tabla para almacenar los servidores
 CREATE TABLE ServerEntity (
-    id INTEGER PRIMARY KEY AUTOINCREMENT, -- Quita el 'NOT NULL' aquí
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     ip TEXT NOT NULL,
     port INTEGER AS Int NOT NULL DEFAULT 22,
     username TEXT NOT NULL,
     password TEXT,
     sshKeyPath TEXT,
-    iconName TEXT NOT NULL DEFAULT 'dns'
+    iconName TEXT NOT NULL DEFAULT 'dns',
+    type TEXT AS DeviceType NOT NULL DEFAULT 'SERVER' -- Nuevo campo mapeado al Enum
 );
 
 -- Tabla para almacenar el historial de métricas (opcional, pero útil)
@@ -28,12 +29,12 @@ CREATE TABLE MetricHistory (
 -- CONSULTAS PARA SERVIDORES
 
 insertServer:
-INSERT INTO ServerEntity(name, ip, port, username, password, sshKeyPath, iconName)
-VALUES (?, ?, ?, ?, ?, ?, ?);
+INSERT INTO ServerEntity(name, ip, port, username, password, sshKeyPath, iconName, type)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?);
 
 updateServer:
 UPDATE ServerEntity
-SET name = ?, ip = ?, port = ?, username = ?, password = ?, sshKeyPath = ?, iconName = ?
+SET name = ?, ip = ?, port = ?, username = ?, password = ?, sshKeyPath = ?, iconName = ?, type = ?
 WHERE id = ?;
 
 deleteServer:

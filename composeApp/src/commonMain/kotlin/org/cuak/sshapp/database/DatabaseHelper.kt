@@ -4,8 +4,9 @@ import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.ColumnAdapter
 import org.cuak.sshapp.ServerDatabase
 import org.cuak.sshapp.ServerEntity
+import org.cuak.sshapp.models.DeviceType
+import org.cuak.sshapp.repository.ServerRepository
 
-// 1. Definimos la Interfaz (Contrato)
 interface DatabaseDriverFactory {
     fun createDriver(): SqlDriver
 }
@@ -20,10 +21,26 @@ fun createDatabase(factory: DatabaseDriverFactory): ServerDatabase {
         override fun encode(value: Int): Long = value.toLong()
     }
 
+    // Adaptador para convertir String (SQL) a Enum (Kotlin)
+    val deviceTypeAdapter = object : ColumnAdapter<DeviceType, String> {
+        override fun decode(databaseValue: String): DeviceType {
+            return try {
+                DeviceType.valueOf(databaseValue)
+            } catch (e: Exception) {
+                DeviceType.SERVER // Valor por defecto
+            }
+        }
+
+        override fun encode(value: DeviceType): String {
+            return value.name
+        }
+    }
+
     return ServerDatabase(
         driver = driver,
         ServerEntityAdapter = ServerEntity.Adapter(
-            portAdapter = portAdapter
+            portAdapter = portAdapter,
+            typeAdapter = deviceTypeAdapter // <--- ¡AQUÍ FALTABA ESTA LÍNEA!
         )
     )
 }

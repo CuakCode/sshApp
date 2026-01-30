@@ -30,7 +30,8 @@ class ServerRepository(database: ServerDatabase) {
             username = server.username,
             password = server.password,
             sshKeyPath = server.sshKeyPath,
-            iconName = server.iconName
+            iconName = server.iconName,
+            type = server.type
         )
     }
 
@@ -45,6 +46,7 @@ class ServerRepository(database: ServerDatabase) {
             password = server.password,
             sshKeyPath = server.sshKeyPath,
             iconName = server.iconName,
+            type = server.type,
             id = server.id
         )
     }
