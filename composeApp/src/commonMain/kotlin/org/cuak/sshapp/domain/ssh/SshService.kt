@@ -1,5 +1,6 @@
 package org.cuak.sshapp.domain.ssh
 
+import org.cuak.sshapp.models.ProcessInfo
 import org.cuak.sshapp.models.Server
 import org.cuak.sshapp.models.ServerMetrics
 
@@ -10,4 +11,5 @@ interface SshClient {
     suspend fun shutdown(server: Server): Result<Unit>
 
     suspend fun openTerminal(server: Server): Result<SshTerminalSession>
+    suspend fun fetchProcesses(server: Server): Result<List<ProcessInfo>>
 }

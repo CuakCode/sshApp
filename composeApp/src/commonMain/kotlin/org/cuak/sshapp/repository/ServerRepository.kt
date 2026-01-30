@@ -55,7 +55,7 @@ class ServerRepository(database: ServerDatabase) {
         queries.deleteServer(id)
     }
 
-    // Mapper de DB a Dominio
+// Mapper de DB a Dominio
     private fun org.cuak.sshapp.ServerEntity.toDomain() = Server(
         id = id,
         name = name,
@@ -65,7 +65,8 @@ class ServerRepository(database: ServerDatabase) {
         password = password,
         sshKeyPath = sshKeyPath,
         iconName = iconName,
-        status = ServerStatus.UNKNOWN // El estado se calcula dinámicamente
+        type = type,
+        status = ServerStatus.UNKNOWN
     )
     suspend fun getServerById(id: Long): Server? {
         return queries.selectServerById(id).executeAsOneOrNull()?.toDomain()

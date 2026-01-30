@@ -14,7 +14,9 @@ import net.schmizz.sshj.userauth.keyprovider.KeyProvider
 import net.schmizz.sshj.userauth.method.AuthKeyboardInteractive
 import net.schmizz.sshj.userauth.method.ChallengeResponseProvider
 import net.schmizz.sshj.userauth.password.Resource
+import org.cuak.sshapp.models.DeviceType
 import org.cuak.sshapp.models.PortInfo
+import org.cuak.sshapp.models.ProcessInfo
 import org.cuak.sshapp.models.Server
 import org.cuak.sshapp.models.ServerMetrics
 import java.io.OutputStream
@@ -31,35 +33,66 @@ class JvmSshClient : SshClient {
         try {
             client.connectAndAuthenticate(server)
 
-            // 1. CPU
+            // --- 1. COMANDO DE CPU CORREGIDO ---
+            val cpuCmd = if (server.type == DeviceType.CAMERA) {
+                // ESTRATEGIA CÁMARA (Yi Hack / BusyBox)
+                // Tu log confirmó que este comando funciona en la cámara:
+                // top -bn1 | grep '^CPU' | tr -d '%' | awk '{print $2 + $4}'
+
+                // En Kotlin escapamos el $ con \$ para que no piense que es una variable.
+                "top -bn1 | grep '^CPU' | tr -d '%' | awk '{print \$2 + \$4}'"
+            } else {
+                // ESTRATEGIA SERVIDOR (Linux Estándar - OrangePi/Ubuntu/Debian)
+                // Salida típica: %Cpu(s): 10.0 us,  2.0 sy...
+                // Usamos sed para limpiar la línea antes de pasarla a awk, es más seguro que grep a veces.
+                // 1. top -bn1: Ejecuta top una vez.
+                // 2. grep "Cpu(s)": Filtra la línea de CPU.
+                // 3. sed "s/.*, *\([0-9.]*\)%* id.*/\1/": TRUCO -> Extraemos el IDLE (inactividad) y restamos de 100.
+                //    (Es más universal porque el orden de us/sys puede cambiar, pero idle suele estar etiquetado).
+
+                // OPCIÓN SIMPLIFICADA QUE FALLA MENOS (Suma US + SY):
+                // Kotlin envía: awk '{print $2 + $4}'
+                "top -bn1 | grep -i 'Cpu(s)' | awk '{print \$2 + \$4}'"
+            }
+
             val cpuVal = try {
-                val cmd = "top -bn1 | grep -i 'Cpu(s)' | awk '{print \$2 + \$4}'"
-                client.execOneCommand(cmd).toDoubleOrNull() ?: 0.0
-            } catch (e: Exception) { 0.0 }
+                val output = client.execOneCommand(cpuCmd)
+                // Limpiamos la salida por si se cuela el prompt o saltos de línea extraños
+                val cleanOutput = output.lines().firstOrNull { it.any { c -> c.isDigit() } } ?: "0.0"
+                cleanOutput.trim().toDoubleOrNull() ?: 0.0
+            } catch (e: Exception) {
+                0.0
+            }
 
-            // 2. RAM
+            // --- 2. COMANDO DE RAM (Sin cambios, parecía funcionar) ---
+            val ramCmd = if (server.type == DeviceType.CAMERA) {
+                // BusyBox suele necesitar free simple
+                "free | awk 'NR==2{printf \"%.2f\", \$3*100/\$2 }'"
+            } else {
+                // Linux estándar soporta -m
+                "free -m | awk 'NR==2{printf \"%.2f\", \$3*100/\$2 }'"
+            }
+
             val ramVal = try {
-                val cmd = "free -m | awk 'NR==2{printf \"%.2f\", \$3*100/\$2 }'"
-                client.execOneCommand(cmd).toDoubleOrNull() ?: 0.0
+                val output = client.execOneCommand(ramCmd)
+                output.trim().toDoubleOrNull() ?: 0.0
             } catch (e: Exception) { 0.0 }
 
-            // 3. Disco
+            // ... (Resto del código igual: Disco, Temperatura, Puertos) ...
+
+            // --- CÓDIGO RESTANTE RESUMIDO ---
             val diskVal = try {
                 val cmd = "df -P / | awk 'NR==2{print \$5}' | tr -d '%'"
                 client.execOneCommand(cmd).toDoubleOrNull() ?: 0.0
             } catch (e: Exception) { 0.0 }
 
-            // 4. Temperatura
             val tempVal = try {
                 val cmd = "cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null || cat /sys/class/hwmon/hwmon0/temp1_input 2>/dev/null"
                 val raw = client.execOneCommand(cmd)
                 (raw.toDoubleOrNull() ?: 0.0) / 1000.0
             } catch (e: Exception) { 0.0 }
 
-            // 5. PUERTOS (Nuevo)
             val ports = try {
-                // Comando compatible con BusyBox (Cámara) y Linux estándar
-                // netstat -nlp muestra: Proto, Recv-Q, Send-Q, Local Address, Foreign Address, State, PID/Program name
                 val cmd = "netstat -nlp | grep LISTEN"
                 val output = client.execOneCommand(cmd)
                 parsePorts(output)
@@ -70,7 +103,7 @@ class JvmSshClient : SshClient {
                 ramPercentage = ramVal,
                 diskUsage = listOf(diskVal),
                 temperatures = if (tempVal > 0) mapOf("CPU" to tempVal) else emptyMap(),
-                openPorts = ports // Asignamos los puertos leídos
+                openPorts = ports
             )
 
             Result.success(metrics)
@@ -82,7 +115,6 @@ class JvmSshClient : SshClient {
             if (client.isConnected) client.disconnect()
         }
     }
-
     // Helper para parsear la salida de netstat
     private fun parsePorts(netstatOutput: String): List<PortInfo> {
         val list = mutableListOf<PortInfo>()
@@ -256,4 +288,88 @@ class JvmSshClient : SshClient {
             session.close()
         }
     }
+
+    override suspend fun fetchProcesses(server: Server): Result<List<ProcessInfo>> = withContext(Dispatchers.IO) {
+        val client = SSHClient()
+        try {
+            client.connectAndAuthenticate(server)
+
+            val processes = if (server.type == DeviceType.CAMERA) {
+                // ESTRATEGIA CÁMARA (BusyBox Top)
+                // Usamos top en modo batch (-b) una vez (-n 1)
+                val cmd = "top -b -n 1"
+                val output = client.execOneCommand(cmd)
+                parseBusyBoxTop(output)
+            } else {
+                // ESTRATEGIA SERVIDOR (Linux Standard PS)
+                // -e: todos, -o: formato custom, --sort: ordenar por cpu descendente
+                // Formato: PID USER %CPU %MEM COMMAND
+                val cmd = "ps -e -o pid,user,%cpu,%mem,comm --sort=-%cpu | head -n 50"
+                val output = client.execOneCommand(cmd)
+                parseLinuxPs(output)
+            }
+
+            Result.success(processes)
+        } catch (e: Exception) {
+            Result.failure(e)
+        } finally {
+            if (client.isConnected) client.disconnect()
+        }
+    }
+
+    private fun parseLinuxPs(output: String): List<ProcessInfo> {
+        val list = mutableListOf<ProcessInfo>()
+        val lines = output.lines().drop(1) // Saltamos cabecera: PID USER %CPU %MEM COMMAND
+
+        for (line in lines) {
+            if (line.isBlank()) continue
+            val parts = line.trim().split("\\s+".toRegex())
+            if (parts.size >= 5) {
+                try {
+                    list.add(ProcessInfo(
+                        pid = parts[0],
+                        user = parts[1],
+                        cpuUsage = parts[2].toDoubleOrNull() ?: 0.0,
+                        memUsage = parts[3].toDoubleOrNull() ?: 0.0,
+                        command = parts.subList(4, parts.size).joinToString(" ")
+                    ))
+                } catch (e: Exception) { /* ignore line */ }
+            }
+        }
+        return list
+    }
+
+    private fun parseBusyBoxTop(output: String): List<ProcessInfo> {
+        // Output típico Yi Camera:
+        // PID  PPID USER     STAT   VSZ %VSZ CPU %CPU COMMAND
+        // 1416    1 root     S     36388 59.5   0 56.0 ./rmm
+        val list = mutableListOf<ProcessInfo>()
+        val lines = output.lines()
+
+        var headerFound = false
+        for (line in lines) {
+            if (line.contains("PID") && line.contains("COMMAND")) {
+                headerFound = true
+                continue
+            }
+            if (!headerFound || line.isBlank()) continue
+
+            val parts = line.trim().split("\\s+".toRegex())
+            // Necesitamos al menos hasta el comando.
+            // Indices Yi: PID(0) PPID(1) USER(2) STAT(3) VSZ(4) %VSZ(5) CPU(6) %CPU(7) COMMAND(8)
+            if (parts.size >= 9) {
+                try {
+                    list.add(ProcessInfo(
+                        pid = parts[0],
+                        user = parts[2], // User está en el índice 2
+                        cpuUsage = parts[7].replace("%","").toDoubleOrNull() ?: 0.0, // %CPU
+                        memUsage = parts[5].replace("%","").toDoubleOrNull() ?: 0.0, // %VSZ (Memoria virtual aprox)
+                        command = parts.subList(8, parts.size).joinToString(" ")
+                    ))
+                } catch (e: Exception) { /* ignore */ }
+            }
+        }
+        return list
+    }
+
 }

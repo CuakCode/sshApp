@@ -46,7 +46,9 @@ fun ServerFormDialog(
     var selectedIcon by remember { mutableStateOf(serverToEdit?.iconName ?: "dns") }
 
     // Nuevo estado para el Tipo de Dispositivo
-    var selectedType by remember { mutableStateOf(serverToEdit?.type ?: DeviceType.SERVER) }
+    var selectedType by remember(serverToEdit) {
+        mutableStateOf(serverToEdit?.type ?: DeviceType.SERVER)
+    }
 
     var passwordVisible by remember { mutableStateOf(false) }
 

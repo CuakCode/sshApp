@@ -8,6 +8,8 @@ import cafe.adriel.voyager.core.model.screenModelScope
 import kotlinx.coroutines.launch
 import org.cuak.sshapp.domain.ssh.SshClient
 import org.cuak.sshapp.domain.ssh.SshTerminalSession
+import org.cuak.sshapp.models.ProcessInfo
+import org.cuak.sshapp.models.ProcessSortOption
 import org.cuak.sshapp.models.Server
 import org.cuak.sshapp.models.ServerMetrics
 import org.cuak.sshapp.repository.ServerRepository
@@ -37,6 +39,15 @@ class ServerDetailViewModel(
     var terminalOutput by mutableStateOf("")
         private set
 
+    var processes by mutableStateOf<List<ProcessInfo>>(emptyList())
+        private set
+
+    var processSortOption by mutableStateOf(ProcessSortOption.CPU)
+        private set
+
+    var isProcessesLoading by mutableStateOf(false)
+        private set
+
     // --- Métricas ---
     fun loadServer(serverId: Long) {
         screenModelScope.launch {
@@ -54,6 +65,32 @@ class ServerDetailViewModel(
                 onSuccess = { DetailUiState.Success(it) },
                 onFailure = { DetailUiState.Error(it.message ?: "Error") }
             )
+        }
+    }
+
+    fun fetchProcesses() {
+        val currentServer = server ?: return
+        screenModelScope.launch {
+            isProcessesLoading = true
+            sshClient.fetchProcesses(currentServer).onSuccess { rawList ->
+                // Aplicamos ordenación inicial
+                processes = sortList(rawList, processSortOption)
+            }
+            isProcessesLoading = false
+        }
+    }
+
+    fun sortProcesses(option: ProcessSortOption) {
+        processSortOption = option
+        processes = sortList(processes, option)
+    }
+
+    private fun sortList(list: List<ProcessInfo>, option: ProcessSortOption): List<ProcessInfo> {
+        return when (option) {
+            ProcessSortOption.CPU -> list.sortedByDescending { it.cpuUsage }
+            ProcessSortOption.MEM -> list.sortedByDescending { it.memUsage }
+            ProcessSortOption.PID -> list.sortedBy { it.pid.toIntOrNull() ?: 0 }
+            ProcessSortOption.NAME -> list.sortedBy { it.command }
         }
     }
 
