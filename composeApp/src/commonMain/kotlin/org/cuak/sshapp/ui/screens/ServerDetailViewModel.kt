@@ -13,7 +13,6 @@ import org.cuak.sshapp.models.ProcessSortOption
 import org.cuak.sshapp.models.Server
 import org.cuak.sshapp.models.ServerMetrics
 import org.cuak.sshapp.repository.ServerRepository
-import org.cuak.sshapp.utils.AnsiUtils
 
 sealed class DetailUiState {
     object Idle : DetailUiState()
@@ -35,7 +34,7 @@ class ServerDetailViewModel(
 
     private var terminalSession: SshTerminalSession? = null
 
-    // Output visual
+    // Output visual (Acumula el texto crudo con códigos ANSI)
     var terminalOutput by mutableStateOf("")
         private set
 
@@ -68,6 +67,7 @@ class ServerDetailViewModel(
         }
     }
 
+    // --- Procesos ---
     fun fetchProcesses() {
         val currentServer = server ?: return
         screenModelScope.launch {
@@ -112,59 +112,22 @@ class ServerDetailViewModel(
                     terminalSession = session
 
                     session.output.collect { newRawText ->
-                        // 1. Limpieza ANSI básica
-                        val textWithoutAnsi = AnsiUtils.stripAnsiCodes(newRawText)
+                        // CORRECCIÓN IMPORTANTE:
+                        // No usamos AnsiUtils ni procesamos el texto aquí.
+                        // Enviamos el texto crudo (con colores y \r) directamente a la UI.
+                        // La clase 'TerminalBuffer' en la UI se encargará de interpretarlo.
 
-                        // 2. Procesado avanzado (Backspaces y Control Chars)
-                        terminalOutput = processTerminalOutput(terminalOutput, textWithoutAnsi)
+                        terminalOutput += newRawText
+
+                        // Limpieza preventiva: Evitamos que el String crezca infinitamente y colapse la memoria
+                        if (terminalOutput.length > 15000) {
+                            terminalOutput = terminalOutput.takeLast(15000)
+                        }
                     }
                 },
                 onFailure = { terminalOutput += "Error: ${it.message}\n" }
             )
         }
-    }
-
-    /**
-     * Procesa el texto:
-     * 1. Maneja Backspaces (\b o 0x7F) para borrar caracteres.
-     * 2. Elimina caracteres de control no imprimibles (0x00..0x1F) excepto \n.
-     */
-    private fun processTerminalOutput(currentText: String, newText: String): String {
-        val sb = StringBuilder(currentText)
-
-        for (char in newText) {
-            val code = char.code
-
-            // Caso 1: Backspace (Borrar carácter anterior)
-            if (char == '\b' || code == 127) {
-                if (sb.isNotEmpty()) {
-                    sb.deleteAt(sb.length - 1)
-                }
-                continue
-            }
-
-            // Caso 2: Saltos de línea (Permitidos)
-            if (char == '\n') {
-                sb.append(char)
-                continue
-            }
-
-            // Caso 3: Caracteres de Control (Ignorar basura como Bell, Tabs crudos, etc.)
-            // El rango 0..31 son controles. Solo permitimos imprimibles (>= 32).
-            if (code < 32) {
-                // Si es un TAB (\t = 9), podríamos convertirlo a espacios,
-                // pero a veces el echo del servidor ya lo expande.
-                // Si ves que faltan espacios, descomenta la siguiente línea:
-                // if (code == 9) sb.append("    ")
-                continue
-            }
-
-            // Caso 4: Texto normal
-            sb.append(char)
-        }
-
-        // Limitar buffer
-        return if (sb.length > 5000) sb.substring(sb.length - 5000) else sb.toString()
     }
 
     fun sendInput(input: String) {
