@@ -45,7 +45,9 @@ kotlin {
             implementation(libs.androidx.activity.compose)
             implementation(libs.sqldelight.android.driver)
             implementation(libs.koin.android)
-            implementation(libs.sshj)
+            implementation("com.hierynomus:sshj:${libs.versions.sshj.get()}") {
+                exclude(group = "org.bouncycastle")
+            }
             implementation(libs.bouncycastle.prov)
             implementation(libs.bouncycastle.pkix)
             implementation(libs.slf4j.nop)
