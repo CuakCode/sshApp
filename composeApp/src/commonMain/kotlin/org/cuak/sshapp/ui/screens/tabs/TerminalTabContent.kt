@@ -28,13 +28,14 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
+// Asegúrate de tener este import
+import androidx.compose.foundation.layout.imePadding
 
-// ... (mismos imports de antes) ...
-import org.cuak.sshapp.utils.TerminalBuffer // Importa la nueva clase
+import org.cuak.sshapp.utils.TerminalBuffer
 
 @Composable
 fun TerminalTabContent(
-    output: String, // Recibe el raw output con códigos ANSI y \r
+    output: String,
     onSendInput: (String) -> Unit,
     onStart: () -> Unit
 ) {
@@ -44,17 +45,14 @@ fun TerminalTabContent(
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
 
-    // PROCESAMIENTO ANSI:
-    // Convertimos el raw output (con \r, \b, etc) en texto visual limpio.
-    // Usamos remember(output) para que solo recalcule cuando cambie el texto.
     val processedText = remember(output) {
         val buffer = TerminalBuffer()
         buffer.appendText(output)
         buffer.toAnnotatedString()
     }
 
-    // Auto-scroll inteligente: Solo si estamos cerca del final
-    LaunchedEffect(processedText) {
+    // Auto-scroll: Se activa cuando cambia el texto O cuando cambia el tamaño de la ventana (teclado)
+    LaunchedEffect(processedText, scrollState.maxValue) {
         scrollState.animateScrollTo(scrollState.maxValue)
     }
 
@@ -62,7 +60,8 @@ fun TerminalTabContent(
         onStart()
         delay(300)
         focusRequester.requestFocus()
-        keyboardController?.show()
+        // Opcional: Mostrar teclado automáticamente al entrar
+        // keyboardController?.show()
     }
 
     Box(
@@ -77,10 +76,9 @@ fun TerminalTabContent(
                     }
                 )
             }
-            .padding(8.dp)
+        // Eliminamos el padding general de 8.dp aquí para manejarlo mejor dentro
     ) {
         // --- 1. MOTOR DE ENTRADA (INVISIBLE) ---
-        // (Mismo código que tenías, funciona bien)
         BasicTextField(
             value = inputBuffer,
             onValueChange = { newValue ->
@@ -93,7 +91,6 @@ fun TerminalTabContent(
                 .graphicsLayer { alpha = 0f }
                 .focusRequester(focusRequester)
                 .onPreviewKeyEvent { event ->
-                    // (Mismos atajos que implementamos antes: Ctrl+C, Ctrl+R, etc)
                     if (event.type == KeyEventType.KeyDown) {
                         when {
                             event.key == Key.V && event.isCtrlPressed && event.isShiftPressed -> {
@@ -101,11 +98,11 @@ fun TerminalTabContent(
                                 true
                             }
                             event.key == Key.R && event.isCtrlPressed -> {
-                                onSendInput("\u0012") // Ctrl+R
+                                onSendInput("\u0012")
                                 true
                             }
                             event.key == Key.C && event.isCtrlPressed && !event.isShiftPressed -> {
-                                onSendInput("\u0003") // Ctrl+C
+                                onSendInput("\u0003")
                                 true
                             }
                             event.key == Key.Enter -> { onSendInput("\n"); true }
@@ -120,25 +117,32 @@ fun TerminalTabContent(
                         }
                     } else false
                 },
-            // ... resto de opciones ...
             textStyle = TextStyle(color = Color.Transparent),
             cursorBrush = SolidColor(Color.Transparent),
             keyboardOptions = KeyboardOptions(autoCorrect = false, keyboardType = KeyboardType.Ascii, imeAction = ImeAction.None)
         )
 
         // --- 2. INTERFAZ VISUAL ---
-        Column(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                // --- CAMBIO CLAVE ---
+                // systemBarsPadding asegura que no se meta bajo la barra de estado
+                // imePadding asegura que el contenido suba con el teclado
+                .systemBarsPadding()
+                .imePadding()
+                .padding(8.dp) // Padding visual interno
+        ) {
             Box(
                 modifier = Modifier
-                    .weight(1f)
+                    .weight(1f) // Esto hace que la terminal ocupe todo el espacio disponible
                     .fillMaxWidth()
                     .background(Color.Black, RoundedCornerShape(4.dp))
                     .padding(4.dp)
             ) {
                 SelectionContainer {
-                    // AQUÍ USAMOS processedText EN LUGAR DE output
                     Text(
-                        text = processedText, // <--- CAMBIO CLAVE
+                        text = processedText,
                         color = Color(0xFF00FF00),
                         fontFamily = FontFamily.Monospace,
                         fontSize = 13.sp,
@@ -150,9 +154,11 @@ fun TerminalTabContent(
                 }
             }
 
-            // Barra de Botones (Igual que antes)
+            // Barra de Botones
             Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 TerminalButton("Esc", onClick = { onSendInput("\u001B") }, color = MaterialTheme.colorScheme.secondary)
@@ -166,7 +172,6 @@ fun TerminalTabContent(
     }
 }
 
-// Botón auxiliar
 @Composable
 fun TerminalButton(
     text: String,
