@@ -13,7 +13,6 @@ plugins {
 sqldelight {
     databases {
         create("ServerDatabase") {
-            // El paquete debe coincidir con el que intentas importar en DatabaseHelper
             packageName.set("org.cuak.sshapp")
             dialect(libs.sqldelight.dialect)
         }
@@ -21,12 +20,16 @@ sqldelight {
 }
 
 kotlin {
+    // 1. IMPORTANTE: Esto asegura que iosMain y otros source sets se creen automáticamente
+    applyDefaultHierarchyTemplate()
+
     androidTarget {
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_11)
         }
     }
-    
+
+    // Configuración de targets iOS
     listOf(
         iosArm64(),
         iosSimulatorArm64()
@@ -36,59 +39,87 @@ kotlin {
             isStatic = true
         }
     }
-    
-    jvm()
-    
-    sourceSets {
-        androidMain.dependencies {
-            implementation(compose.preview)
-            implementation(libs.androidx.activity.compose)
-            implementation(libs.sqldelight.android.driver)
-            implementation(libs.koin.android)
-            implementation("com.hierynomus:sshj:${libs.versions.sshj.get()}") {
-                exclude(group = "org.bouncycastle")
-            }
-            implementation(libs.bouncycastle.prov)
-            implementation(libs.bouncycastle.pkix)
-            implementation(libs.slf4j.nop)
-        }
-        commonMain.dependencies {
-            implementation(compose.runtime)
-            implementation(compose.foundation)
-            implementation(compose.material3)
-            implementation(compose.ui)
-            implementation(compose.components.resources)
-            implementation(compose.components.uiToolingPreview)
-            implementation(libs.androidx.lifecycle.viewmodelCompose)
-            implementation(libs.androidx.lifecycle.runtimeCompose)
-            implementation(compose.materialIconsExtended)
-            implementation(libs.sqldelight.runtime)
-            implementation(libs.sqldelight.coroutines)
-            implementation(libs.okio)
-            implementation(libs.koin.core)
-            implementation(libs.koin.compose)
-            implementation(libs.koin.compose.viewmodel)
-            implementation(libs.voyager.navigator)
-            implementation(libs.voyager.koin)
-            implementation(libs.voyager.transitions)
-            implementation(libs.filekit.core)
-            implementation(libs.filekit.compose)
 
+    jvm()
+
+    sourceSets {
+        val commonMain by getting {
+            dependencies {
+                implementation(compose.runtime)
+                implementation(compose.foundation)
+                implementation(compose.material3)
+                implementation(compose.ui)
+                implementation(compose.components.resources)
+                implementation(compose.components.uiToolingPreview)
+                implementation(libs.androidx.lifecycle.viewmodelCompose)
+                implementation(libs.androidx.lifecycle.runtimeCompose)
+                implementation(compose.materialIconsExtended)
+                implementation(libs.sqldelight.runtime)
+                implementation(libs.sqldelight.coroutines)
+                implementation(libs.okio)
+                implementation(libs.koin.core)
+                implementation(libs.koin.compose)
+                implementation(libs.koin.compose.viewmodel)
+                implementation(libs.voyager.navigator)
+                implementation(libs.voyager.koin)
+                implementation(libs.voyager.transitions)
+                implementation(libs.filekit.core)
+                implementation(libs.filekit.compose)
+            }
         }
-        commonTest.dependencies {
-            implementation(libs.kotlin.test)
+
+        // --- SOURCE SET COMPARTIDO (Android + JVM) ---
+        val sharedJvmMain by creating {
+            dependsOn(commonMain)
+            dependencies {
+                // 2. CORRECCIÓN: Usamos String explícito para evitar el error de tipos con 'exclude'
+                implementation("com.hierynomus:sshj:${libs.versions.sshj.get()}") {
+                    exclude(group = "org.bouncycastle")
+                }
+
+                implementation(libs.bouncycastle.prov)
+                implementation(libs.bouncycastle.pkix)
+                implementation(libs.slf4j.nop)
+
+                // Usamos la versión de corrutinas definida en tu toml
+                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:${libs.versions.kotlinx.coroutines.get()}")
+            }
         }
-        jvmMain.dependencies {
-            implementation(compose.desktop.currentOs)
-            implementation(libs.kotlinx.coroutinesSwing)
-            implementation(libs.sqldelight.jvm.driver)
-            implementation(libs.sshj)
-            implementation(libs.bouncycastle.prov)
-            implementation(libs.bouncycastle.pkix)
-            implementation(libs.slf4j.nop)
+
+        val androidMain by getting {
+            // Hereda de sharedJvmMain
+            dependsOn(sharedJvmMain)
+
+            dependencies {
+                implementation(compose.preview)
+                implementation(libs.androidx.activity.compose)
+                implementation(libs.sqldelight.android.driver)
+                implementation(libs.koin.android)
+            }
         }
-        iosMain.dependencies {
-            implementation(libs.sqldelight.native.driver)
+
+        val jvmMain by getting {
+            // Hereda de sharedJvmMain
+            dependsOn(sharedJvmMain)
+
+            dependencies {
+                implementation(compose.desktop.currentOs)
+                implementation(libs.kotlinx.coroutinesSwing)
+                implementation(libs.sqldelight.jvm.driver)
+            }
+        }
+
+        // iosMain ya existe gracias a applyDefaultHierarchyTemplate(), usamos 'getting'
+        val iosMain by getting {
+            dependencies {
+                implementation(libs.sqldelight.native.driver)
+            }
+        }
+
+        val commonTest by getting {
+            dependencies {
+                implementation(libs.kotlin.test)
+            }
         }
     }
 }
