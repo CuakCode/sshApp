@@ -2,19 +2,29 @@ package org.cuak.sshapp.di
 
 import org.cuak.sshapp.ServerDatabase
 import org.cuak.sshapp.database.createDatabase
-import org.cuak.sshapp.database.DatabaseDriverFactory
 import org.cuak.sshapp.repository.ServerRepository
 import org.cuak.sshapp.ui.screens.HomeViewModel
 import org.cuak.sshapp.ui.screens.ServerDetailViewModel
-import org.koin.core.module.dsl.factoryOf
+// IMPORTANTE: Asegúrate de importar tu ConnectivityManager
+import org.cuak.sshapp.network.ConnectivityManager
 import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.module
 
 val commonModule = module {
+    // Base de datos
     single<ServerDatabase> { createDatabase(get()) }
+
+    // Repositorio
     singleOf(::ServerRepository)
-    // Cambiamos factory por screenModel para Voyager
-    factory { HomeViewModel(get()) }
-    // Si creas un ServerDetailViewModel, regístralo aquí también
+
+    // --- CORRECCIÓN: REGISTRAR CONNECTIVITY MANAGER ---
+    // Esta es la línea que te falta y causa el error:
+    factory { ConnectivityManager() }
+
+    // HomeViewModel: Ahora recibe 2 parámetros (Repository, ConnectivityManager)
+    // Por eso usamos get(), get()
+    factory { HomeViewModel(get(), get()) }
+
+    // ServerDetailViewModel
     factory { ServerDetailViewModel(get(), get()) }
 }

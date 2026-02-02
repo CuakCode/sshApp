@@ -9,7 +9,9 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.koin.koinScreenModel
@@ -22,17 +24,12 @@ class HomeScreen : Screen {
 
     @Composable
     override fun Content() {
-        // Obtenemos el navegador de Voyager
         val navigator = LocalNavigator.currentOrThrow
-
-        // Inyectamos el ViewModel
         val viewModel = koinScreenModel<HomeViewModel>()
 
-        // Llamamos al contenido de la pantalla
         HomeScreenContent(
             viewModel = viewModel,
             onServerClick = { server ->
-                // Navegamos a la pantalla de detalles
                 navigator.push(ServerDetailScreen(serverId = server.id))
             }
         )
@@ -45,7 +42,10 @@ private fun HomeScreenContent(
     viewModel: HomeViewModel,
     onServerClick: (Server) -> Unit
 ) {
-    val servers by viewModel.servers.collectAsState()
+    // 1. CAMBIO: Observamos el estado completo (Carga + Datos)
+    val state by viewModel.uiState.collectAsState()
+
+    // Estado local para diálogos
     var showAddDialog by remember { mutableStateOf(false) }
     var showEditDialog by remember { mutableStateOf(false) }
 
@@ -55,60 +55,78 @@ private fun HomeScreenContent(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = {
-                    Text(
-                        "Mis Servidores",
-                        style = MaterialTheme.typography.titleLarge
-                    )
-                }
+                title = { Text("Mis Servidores") },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background
+                )
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showAddDialog = true }) {
+            FloatingActionButton(
+                onClick = { showAddDialog = true },
+                containerColor = MaterialTheme.colorScheme.primary
+            ) {
                 Icon(Icons.Default.Add, contentDescription = "Añadir Servidor")
             }
         }
     ) { padding ->
-        LazyVerticalGrid(
-            columns = GridCells.Adaptive(minSize = 180.dp),
-            contentPadding = PaddingValues(8.dp),
-            modifier = Modifier.padding(padding)
+
+        // 2. MEJORA: Gestión de estados de UI (Cargando vs Vacío vs Contenido)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
         ) {
-            items(servers, key = { it.id }) { server ->
-                ServerCard(
-                    server = server,
-                    onClick = { onServerClick(server) },
-                    onLongClick = { viewModel.showServerOptions(server) }
-                )
+            when {
+                state.isLoading && state.servers.isEmpty() -> {
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                }
+                state.servers.isEmpty() -> {
+                    Text(
+                        text = "No hay servidores configurados.\nPulsa + para añadir uno.",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
+                else -> {
+                    LazyVerticalGrid(
+                        columns = GridCells.Adaptive(minSize = 160.dp), // Ajustado para mejor visualización
+                        contentPadding = PaddingValues(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        items(state.servers, key = { it.id }) { server ->
+                            ServerCard(
+                                server = server,
+                                // El estado (Online/Offline) ya viene inyectado en server.status desde el ViewModel
+                                onClick = { onServerClick(server) },
+                                onLongClick = { viewModel.showServerOptions(server) }
+                            )
+                        }
+                    }
+                }
             }
         }
 
-        // 1. Bottom Sheet de Opciones
+        // --- Gestión de Diálogos y BottomSheets ---
+
+        // 3. Bottom Sheet de Opciones
         if (selectedServer != null) {
             ModalBottomSheet(
                 onDismissRequest = { viewModel.dismissOptions() },
                 sheetState = sheetState
             ) {
-                ListItem(
-                    headlineContent = { Text("Editar") },
-                    leadingContent = { Icon(Icons.Default.Edit, contentDescription = null) },
-                    modifier = Modifier.clickable {
-                        showEditDialog = true
-                        // El bottom sheet se cierra automáticamente al abrir el diálogo
-                    }
+                ServerOptionsContent(
+                    onEdit = { showEditDialog = true }, // El diálogo se superpondrá
+                    onDelete = { viewModel.deleteServer(selectedServer.id) }
                 )
-                ListItem(
-                    headlineContent = { Text("Eliminar", color = MaterialTheme.colorScheme.error) },
-                    leadingContent = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
-                    modifier = Modifier.clickable {
-                        viewModel.deleteServer(selectedServer.id)
-                    }
-                )
-                Spacer(modifier = Modifier.height(24.dp))
             }
         }
 
-        // 2. Diálogo de Edición
+        // 4. Diálogo de Edición
         if (showEditDialog && selectedServer != null) {
             ServerFormDialog(
                 serverToEdit = selectedServer,
@@ -116,7 +134,6 @@ private fun HomeScreenContent(
                     showEditDialog = false
                     viewModel.dismissOptions()
                 },
-                // AHORA RECIBE 'type'
                 onConfirm = { name, ip, port, user, pass, key, icon, type ->
                     viewModel.updateServer(selectedServer.id, name, ip, port, user, pass, key, icon, type)
                     showEditDialog = false
@@ -124,16 +141,40 @@ private fun HomeScreenContent(
             )
         }
 
-        // 3. Diálogo de Añadir
+        // 5. Diálogo de Añadir
         if (showAddDialog) {
             ServerFormDialog(
                 onDismiss = { showAddDialog = false },
-                // AHORA RECIBE 'type'
                 onConfirm = { name, ip, port, user, pass, key, icon, type ->
                     viewModel.addServer(name, ip, port, user, pass, key, icon, type)
                     showAddDialog = false
                 }
             )
         }
+    }
+}
+
+/**
+ * Componente extraído para limpiar el código principal.
+ * Muestra las opciones disponibles para un servidor.
+ */
+@Composable
+private fun ServerOptionsContent(
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
+    Column(modifier = Modifier.padding(bottom = 24.dp)) {
+        ListItem(
+            headlineContent = { Text("Editar Servidor") },
+            leadingContent = { Icon(Icons.Default.Edit, contentDescription = null) },
+            modifier = Modifier.clickable { onEdit() }
+        )
+        ListItem(
+            headlineContent = { Text("Eliminar Servidor", color = MaterialTheme.colorScheme.error) },
+            leadingContent = {
+                Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+            },
+            modifier = Modifier.clickable { onDelete() }
+        )
     }
 }
