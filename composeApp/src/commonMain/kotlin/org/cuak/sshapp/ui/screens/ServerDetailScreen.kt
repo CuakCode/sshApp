@@ -1,18 +1,25 @@
 package org.cuak.sshapp.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.koin.koinScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import org.cuak.sshapp.models.DeviceType
+import org.cuak.sshapp.models.Server
+import org.cuak.sshapp.ui.components.RtspVideoPlayer
 import org.cuak.sshapp.ui.screens.tabs.MonitorTabContent
 import org.cuak.sshapp.ui.screens.tabs.ProcessesTabContent
 import org.cuak.sshapp.ui.screens.tabs.TerminalTabContent
@@ -25,14 +32,27 @@ data class ServerDetailScreen(val serverId: Long) : Screen {
         val navigator = LocalNavigator.currentOrThrow
         val viewModel = koinScreenModel<ServerDetailViewModel>()
 
+        // Carga inicial del servidor
         LaunchedEffect(serverId) { viewModel.loadServer(serverId) }
 
         val server = viewModel.server
+
+        // --- 1. LÓGICA DE PESTAÑAS DINÁMICAS ---
+        val isCamera = server?.type == DeviceType.CAMERA
+
+        // Si es cámara, insertamos la pestaña "Cámara" al principio (índice 0)
+        val tabs = remember(isCamera) {
+            if (isCamera) {
+                listOf("Cámara", "Monitor", "Procesos", "Terminal")
+            } else {
+                listOf("Monitor", "Procesos", "Terminal")
+            }
+        }
+
         var selectedTabIndex by remember { mutableStateOf(0) }
-        val tabs = listOf("Monitor", "Procesos", "Terminal")
         var showShutdownDialog by remember { mutableStateOf(false) }
 
-        // Diálogo de Apagado
+        // Diálogo de confirmación de apagado
         if (showShutdownDialog) {
             AlertDialog(
                 onDismissRequest = { showShutdownDialog = false },
@@ -59,7 +79,7 @@ data class ServerDetailScreen(val serverId: Long) : Screen {
                         }
                     },
                     navigationIcon = {
-                        IconButton(onClick = { navigator.pop() }) { Icon(Icons.Default.ArrowBack, "Volver") }
+                        IconButton(onClick = { navigator.pop() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver") }
                     },
                     actions = {
                         IconButton(onClick = { showShutdownDialog = true }) {
@@ -67,7 +87,11 @@ data class ServerDetailScreen(val serverId: Long) : Screen {
                         }
                         IconButton(onClick = {
                             // Refrescar según la pestaña activa
-                            if (selectedTabIndex == 1) viewModel.fetchProcesses() else viewModel.fetchMetrics()
+                            when (tabs.getOrNull(selectedTabIndex)) {
+                                "Monitor" -> viewModel.fetchMetrics()
+                                "Procesos" -> viewModel.fetchProcesses()
+                                else -> { /* No requiere refresco manual */ }
+                            }
                         }) {
                             Icon(Icons.Default.Refresh, "Refrescar")
                         }
@@ -76,6 +100,8 @@ data class ServerDetailScreen(val serverId: Long) : Screen {
             }
         ) { padding ->
             Column(modifier = Modifier.padding(padding).fillMaxSize()) {
+
+                // Barra de Pestañas
                 PrimaryTabRow(selectedTabIndex = selectedTabIndex) {
                     tabs.forEachIndexed { index, title ->
                         Tab(
@@ -83,23 +109,46 @@ data class ServerDetailScreen(val serverId: Long) : Screen {
                             onClick = { selectedTabIndex = index },
                             text = { Text(title) },
                             icon = {
-                                when (index) {
-                                    0 -> Icon(Icons.Default.Speed, null)
-                                    1 -> Icon(Icons.Default.Memory, null)
-                                    2 -> Icon(Icons.Default.Terminal, null)
+                                val icon = when (title) {
+                                    "Cámara" -> Icons.Default.Videocam
+                                    "Monitor" -> Icons.Default.Speed
+                                    "Procesos" -> Icons.Default.Memory
+                                    "Terminal" -> Icons.Default.Terminal
+                                    else -> Icons.Default.Circle
                                 }
+                                Icon(icon, null)
                             }
                         )
                     }
                 }
 
+                // Contenido de las Pestañas
                 Box(modifier = Modifier.fillMaxSize()) {
-                    when (selectedTabIndex) {
-                        0 -> {
+                    val currentTabTitle = tabs.getOrNull(selectedTabIndex)
+
+                    when (currentTabTitle) {
+                        "Cámara" -> {
+                            server?.let { srv ->
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(Color.Black),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    // --- REPRODUCTOR RTSP ---
+                                    // Usa la función 'getAuthenticatedRtspUrl' definida abajo
+                                    RtspVideoPlayer(
+                                        url = srv.getAuthenticatedRtspUrl(),
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                }
+                            }
+                        }
+                        "Monitor" -> {
                             LaunchedEffect(Unit) { viewModel.fetchMetrics() }
                             MonitorTabContent(viewModel.uiState) { viewModel.fetchMetrics() }
                         }
-                        1 -> {
+                        "Procesos" -> {
                             LaunchedEffect(Unit) {
                                 if(viewModel.processes.isEmpty()) viewModel.fetchProcesses()
                             }
@@ -111,14 +160,42 @@ data class ServerDetailScreen(val serverId: Long) : Screen {
                                 onRefresh = { viewModel.fetchProcesses() }
                             )
                         }
-                        2 -> TerminalTabContent(
-                            output = viewModel.terminalOutput,
-                            onSendInput = { viewModel.sendInput(it) },
-                            onStart = { viewModel.startTerminal() }
-                        )
+                        "Terminal" -> {
+                            TerminalTabContent(
+                                output = viewModel.terminalOutput,
+                                onSendInput = { viewModel.sendInput(it) },
+                                onStart = { viewModel.startTerminal() }
+                            )
+                        }
                     }
                 }
             }
         }
+    }
+
+    // --- 2. GENERACIÓN DE URL CON CREDENCIALES ---
+    private fun Server.getAuthenticatedRtspUrl(): String {
+        val cleanIp = this.ip.trim()
+
+        // SEGÚN TU YAML:
+        // rtsp:
+        //   listen: ":8554"
+        //   username: "root"
+        //   password: "root"
+
+        val rtspPort = 8554
+        val rtspUser = "root"
+        val rtspPass = "root"
+
+        // SEGÚN TU YAML:
+        // streams:
+        //   ch0_1.h264: ... (Baja calidad)
+        val streamPath = "ch0_1.h264"
+
+        // URL Final construida con los datos exactos del servidor
+        val url = "rtsp://$rtspUser:$rtspPass@$cleanIp:$rtspPort/$streamPath"
+
+        println("[RTSP] URL Forzada por YAML: $url")
+        return url
     }
 }

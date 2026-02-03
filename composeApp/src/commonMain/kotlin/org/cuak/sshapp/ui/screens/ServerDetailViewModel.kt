@@ -51,7 +51,9 @@ class ServerDetailViewModel(
     fun loadServer(serverId: Long) {
         screenModelScope.launch {
             server = repository.getServerById(serverId)
-            server?.let { fetchMetrics() }
+            // Opcional: Cargar métricas automáticamente al iniciar si NO es cámara
+            // Si es cámara, la UI priorizará el video, así que quizás no queremos cargar métricas inmediatamente
+            // para no saturar la red. Dejamos que la pestaña Monitor las pida.
         }
     }
 
@@ -112,14 +114,10 @@ class ServerDetailViewModel(
                     terminalSession = session
 
                     session.output.collect { newRawText ->
-                        // CORRECCIÓN IMPORTANTE:
-                        // No usamos AnsiUtils ni procesamos el texto aquí.
-                        // Enviamos el texto crudo (con colores y \r) directamente a la UI.
-                        // La clase 'TerminalBuffer' en la UI se encargará de interpretarlo.
-
+                        // Acumulamos texto crudo
                         terminalOutput += newRawText
 
-                        // Limpieza preventiva: Evitamos que el String crezca infinitamente y colapse la memoria
+                        // Limpieza preventiva buffer
                         if (terminalOutput.length > 15000) {
                             terminalOutput = terminalOutput.takeLast(15000)
                         }

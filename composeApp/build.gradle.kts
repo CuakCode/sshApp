@@ -95,6 +95,7 @@ kotlin {
                 implementation(libs.androidx.activity.compose)
                 implementation(libs.sqldelight.android.driver)
                 implementation(libs.koin.android)
+                implementation(libs.android.libvlc)
             }
         }
 
@@ -106,6 +107,7 @@ kotlin {
                 implementation(compose.desktop.currentOs)
                 implementation(libs.kotlinx.coroutinesSwing)
                 implementation(libs.sqldelight.jvm.driver)
+                implementation(libs.desktop.vlcj)
             }
         }
 
@@ -158,11 +160,13 @@ dependencies {
 compose.desktop {
     application {
         mainClass = "org.cuak.sshapp.MainKt"
-
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "org.cuak.sshapp"
             packageVersion = "1.0.0"
         }
     }
+}
+tasks.findByName("jvmRun")?.configure<JavaExec> {
+    mainClass.set("org.cuak.sshapp.MainKt")
 }
