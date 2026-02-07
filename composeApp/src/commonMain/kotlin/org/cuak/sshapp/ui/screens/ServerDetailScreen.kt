@@ -177,25 +177,11 @@ data class ServerDetailScreen(val serverId: Long) : Screen {
     private fun Server.getAuthenticatedRtspUrl(): String {
         val cleanIp = this.ip.trim()
 
-        // SEGÚN TU YAML:
-        // rtsp:
-        //   listen: ":8554"
-        //   username: "root"
-        //   password: "root"
+        // Usamos el puerto de la API web (1984) que ya sabemos que funciona
+        // y pedimos el stream "test" en formato mp4 o flv
+        val url = "http://$cleanIp:1984/api/stream.mp4?src=test"
 
-        val rtspPort = 8554
-        val rtspUser = "root"
-        val rtspPass = "root"
-
-        // SEGÚN TU YAML:
-        // streams:
-        //   ch0_1.h264: ... (Baja calidad)
-        val streamPath = "ch0_1.h264"
-
-        // URL Final construida con los datos exactos del servidor
-        val url = "rtsp://$rtspUser:$rtspPass@$cleanIp:$rtspPort/$streamPath"
-
-        println("[RTSP] URL Forzada por YAML: $url")
+        println("[VIDEO] URL Generada: $url")
         return url
     }
 }
