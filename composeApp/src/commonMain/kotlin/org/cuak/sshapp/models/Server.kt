@@ -15,11 +15,6 @@ data class Server(
     val status: ServerStatus = ServerStatus.UNKNOWN,
     val iconName: String = "dns",
     val type: DeviceType = DeviceType.SERVER // Nuevo campo
-) {
-    // Helper para obtener la URL RTSP si es cámara
-    fun getRtspUrl(): String {
-        return "rtsp://${ip}:554/ch0_0.h264" // URL estándar de Yi-Hack v2
-    }
-}
+)
 
 enum class ServerStatus { ONLINE, OFFLINE, UNKNOWN }

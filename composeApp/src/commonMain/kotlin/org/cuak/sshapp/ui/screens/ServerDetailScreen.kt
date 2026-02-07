@@ -24,6 +24,8 @@ import org.cuak.sshapp.ui.screens.tabs.MonitorTabContent
 import org.cuak.sshapp.ui.screens.tabs.ProcessesTabContent
 import org.cuak.sshapp.ui.screens.tabs.TerminalTabContent
 
+
+
 data class ServerDetailScreen(val serverId: Long) : Screen {
 
     @OptIn(ExperimentalMaterial3Api::class)
@@ -136,10 +138,13 @@ data class ServerDetailScreen(val serverId: Long) : Screen {
                                     contentAlignment = Alignment.Center
                                 ) {
                                     // --- REPRODUCTOR RTSP ---
-                                    // Usa la función 'getAuthenticatedRtspUrl' definida abajo
                                     RtspVideoPlayer(
-                                        url = srv.getAuthenticatedRtspUrl(),
-                                        modifier = Modifier.fillMaxSize()
+                                        url = "rtsp://${srv.ip}:8554/ch0_0.h264", // Usamos 'srv' (la variable segura del let)
+                                        modifier = Modifier.fillMaxSize(),
+                                        onStatusChange = { status ->
+                                            // Este callback es obligatorio según la definición expect/actual
+                                            println("Estado cámara: $status")
+                                        }
                                     )
                                 }
                             }
@@ -172,28 +177,4 @@ data class ServerDetailScreen(val serverId: Long) : Screen {
             }
         }
     }
-
-    // --- 2. GENERACIÓN DE URL CON CREDENCIALES ---
-// --- VERSIÓN FINAL Y OPTIMIZADA ---
-    private fun Server.getAuthenticatedRtspUrl(): String {
-        val cleanIp = this.ip.trim()
-
-        //rtsp://192.168.0.11:8554/ch0_0.h264
-        // 1. PROTOCOLO: Usamos HTTP-FLV (Puerto 1984 de go2rtc)
-        //    Es TCP (estable), baja latencia y ligero.
-        //    VLC lo reproduce nativamente sin cortes.
-        val protocol = "rtsp"
-        val port = 8554
-
-        // 2. FUENTE: Usamos 'ch0_1.h264' (Baja calidad)
-        //    Esto es lo que garantiza el BAJO CONSUMO DE DATOS.
-        //    Si quisieras alta calidad, cambiarías a ch0_0.h264
-        val streamSource = "ch0_1.h264"
-
-        // URL: http://192.168.0.11:1984/api/stream.flv?src=ch0_1.h264
-        val url = "$protocol://$cleanIp:$port/$streamSource"
-
-        println("[VIDEO] URL Optimizada: $url")
-        return url
     }
-}

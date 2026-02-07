@@ -95,6 +95,10 @@ kotlin {
                 implementation(libs.androidx.activity.compose)
                 implementation(libs.sqldelight.android.driver)
                 implementation(libs.koin.android)
+                implementation(libs.androidx.media3.exoplayer)
+                implementation(libs.androidx.media3.exoplayer.rtsp) // Vital para cámaras
+                implementation(libs.androidx.media3.ui)
+
             }
         }
 
@@ -106,7 +110,20 @@ kotlin {
                 implementation(compose.desktop.currentOs)
                 implementation(libs.kotlinx.coroutinesSwing)
                 implementation(libs.sqldelight.jvm.driver)
-                implementation("org.bytedeco:javacv-platform:1.5.10")
+                implementation(libs.javacv)
+                implementation(libs.ffmpeg)
+                val osName = System.getProperty("os.name").lowercase()
+                val osArch = System.getProperty("os.arch").lowercase()
+                val nativeClassifier = when {
+                    osName.contains("linux") && (osArch == "amd64" || osArch == "x86_64") -> "linux-x86_64"
+                    osName.contains("linux") && (osArch == "aarch64" || osArch == "arm64") -> "linux-arm64" // Para Raspberry Pi o VMs ARM
+                    osName.contains("windows") && (osArch == "amd64" || osArch == "x86_64") -> "windows-x86_64"
+                    osName.contains("mac") && (osArch == "aarch64" || osArch == "arm64") -> "macosx-arm64" // Mac M1/M2/M3
+                    osName.contains("mac") -> "macosx-x86_64" // Mac Intel antiguo
+                    else -> throw IllegalStateException("Sistema no soportado automáticamente: $osName $osArch")
+                }
+                val ffmpegVersion = libs.versions.ffmpeg.get()
+                implementation("org.bytedeco:ffmpeg:$ffmpegVersion:$nativeClassifier")
             }
         }
 
