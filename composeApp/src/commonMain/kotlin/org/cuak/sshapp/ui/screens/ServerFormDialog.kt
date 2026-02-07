@@ -1,5 +1,6 @@
 package org.cuak.sshapp.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -8,162 +9,97 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import io.github.vinceglb.filekit.path
-import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
+import androidx.compose.ui.window.Dialog
 import io.github.vinceglb.filekit.dialogs.FileKitType
+import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
+import io.github.vinceglb.filekit.path
 import org.cuak.sshapp.models.DeviceType
 import org.cuak.sshapp.models.Server
-import org.cuak.sshapp.ui.components.getIconByName
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServerFormDialog(
-    serverToEdit: Server? = null,
+    server: Server? = null,
     onDismiss: () -> Unit,
-    onConfirm: (
-        name: String,
-        ip: String,
-        port: Int,
-        user: String,
-        pass: String?,
-        keyPath: String?,
-        icon: String,
-        type: DeviceType // Nuevo parámetro
-    ) -> Unit
+    onConfirm: (Server) -> Unit
 ) {
-    // --- ESTADOS ---
-    var name by remember { mutableStateOf(serverToEdit?.name ?: "") }
-    var ip by remember { mutableStateOf(serverToEdit?.ip ?: "") }
-    var port by remember { mutableStateOf(serverToEdit?.port?.toString() ?: "22") }
-    var user by remember { mutableStateOf(serverToEdit?.username ?: "") }
-    var password by remember { mutableStateOf(serverToEdit?.password ?: "") }
-    var sshKeyPath by remember { mutableStateOf(serverToEdit?.sshKeyPath ?: "") }
-    var selectedIcon by remember { mutableStateOf(serverToEdit?.iconName ?: "dns") }
+    // Estados básicos
+    var name by remember { mutableStateOf(server?.name ?: "") }
+    var ip by remember { mutableStateOf(server?.ip ?: "") }
+    var port by remember { mutableStateOf(server?.port?.toString() ?: "22") }
+    var username by remember { mutableStateOf(server?.username ?: "") }
+    var password by remember { mutableStateOf(server?.password ?: "") }
 
-    // Nuevo estado para el Tipo de Dispositivo
-    var selectedType by remember(serverToEdit) {
-        mutableStateOf(serverToEdit?.type ?: DeviceType.SERVER)
-    }
+    // --- RECUPERADO: Estado para la ruta de la clave SSH ---
+    var sshKeyPath by remember { mutableStateOf(server?.sshKeyPath ?: "") }
+
+    // Estado del tipo de dispositivo
+    var type by remember { mutableStateOf(server?.type ?: DeviceType.SERVER) }
+
+    // Estados específicos de CÁMARA
+    var cameraProtocol by remember { mutableStateOf(server?.cameraProtocol ?: "RTSP") }
+    var cameraPort by remember { mutableStateOf(server?.cameraPort?.toString() ?: "8554") }
+    var cameraStream by remember { mutableStateOf(server?.cameraStream ?: "ch0_0.h264") }
 
     var passwordVisible by remember { mutableStateOf(false) }
 
-    // Control de los dropdowns
-    var iconExpanded by remember { mutableStateOf(false) }
-    var typeExpanded by remember { mutableStateOf(false) }
-
-    // Opciones de iconos (Añadido 'videocam' para las cámaras)
-    val iconOptions = listOf(
-        "dns",          // Servidor genérico
-        "videocam",     // Cámara de video estándar
-        "camera_alt",   // Cámara de fotos clásica
-        "security",     // Escudo de seguridad
-        "cast_connected", // Dispositivo de streaming
-        "storage",      // NAS / Almacenamiento
-        "computer",     // PC / Laptop
-        "router",       // Router / Switch
-        "cloud",        // Nube / VPS remoto
-        "memory",       // Chip / IoT
-        "smart_toy"     // Robot / Dispositivo inteligente genérico
-    )
-
-    // --- LOGICA AUXILIAR ---
-    // Si el usuario cambia a modo cámara, sugerimos el icono de cámara y el puerto 22
-    LaunchedEffect(selectedType) {
-        if (selectedType == DeviceType.CAMERA && serverToEdit == null) {
-            selectedIcon = "videocam"
-            if (port.isEmpty() || port == "22") port = "22"
-        } else if (selectedType == DeviceType.SERVER && serverToEdit == null && selectedIcon == "videocam") {
-            selectedIcon = "dns"
-        }
-    }
-
-    // --- FILE PICKER ---
-    val pickerLauncher = rememberFilePickerLauncher(
-        type = FileKitType.File(extensions = listOf("key", "pem", "pub", "ppk")),
-        title = "Selecciona tu clave SSH"
+    // Configuración del Selector de Archivos (FileKit)
+    val launcher = rememberFilePickerLauncher(
+        type = FileKitType.File(extensions = listOf("pem", "key", "ppk", "pub")), // Filtro opcional
+        title = "Seleccionar Clave Privada"
     ) { file ->
+        // Actualizamos la ruta si se selecciona un archivo
         file?.path?.let { sshKeyPath = it }
     }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(if (serverToEdit == null) "Nuevo Dispositivo" else "Editar Dispositivo")
-        },
-        text = {
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+                .heightIn(max = 700.dp), // Aumentamos un poco la altura máxima
+            shape = MaterialTheme.shapes.large
+        ) {
             Column(
                 modifier = Modifier
-                    .verticalScroll(rememberScrollState())
-                    .fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                    .padding(16.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                Text(
+                    text = if (server == null) "Nuevo Dispositivo" else "Editar Dispositivo",
+                    style = MaterialTheme.typography.titleLarge
+                )
 
-                // --- 1. SELECTOR VISUAL DE TIPO DE DISPOSITIVO ---
-                ExposedDropdownMenuBox(
-                    expanded = typeExpanded,
-                    onExpandedChange = { typeExpanded = !typeExpanded }
+                // Selector de Tipo de Dispositivo
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    OutlinedTextField(
-                        value = if (selectedType == DeviceType.SERVER) "Servidor Linux" else "Cámara Yi Hack",
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Tipo de Dispositivo") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = if (selectedType == DeviceType.SERVER) Icons.Default.Dns else Icons.Default.Videocam,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = typeExpanded) },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedLabelColor = MaterialTheme.colorScheme.primary,
-                            unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
-                        ),
-                        modifier = Modifier.menuAnchor().fillMaxWidth()
+                    FilterChip(
+                        selected = type == DeviceType.SERVER,
+                        onClick = { type = DeviceType.SERVER },
+                        label = { Text("Servidor Linux") },
+                        leadingIcon = { Icon(Icons.Default.Dns, null) }
                     )
-                    ExposedDropdownMenu(
-                        expanded = typeExpanded,
-                        onDismissRequest = { typeExpanded = false }
-                    ) {
-                        // Opción Servidor
-                        DropdownMenuItem(
-                            text = {
-                                Column {
-                                    Text("Servidor Linux", style = MaterialTheme.typography.bodyLarge)
-                                    Text("VPS, Raspberry Pi, Ubuntu...", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
-                                }
-                            },
-                            onClick = {
-                                selectedType = DeviceType.SERVER
-                                typeExpanded = false
-                            },
-                            leadingIcon = { Icon(Icons.Default.Dns, null) }
-                        )
-                        HorizontalDivider()
-                        // Opción Cámara
-                        DropdownMenuItem(
-                            text = {
-                                Column {
-                                    Text("Cámara Yi Hack", style = MaterialTheme.typography.bodyLarge)
-                                    Text("Yi Home/Kami (Allwinner/MStar)", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
-                                }
-                            },
-                            onClick = {
-                                selectedType = DeviceType.CAMERA
-                                typeExpanded = false
-                            },
-                            leadingIcon = { Icon(Icons.Default.Videocam, null) }
-                        )
-                    }
+                    FilterChip(
+                        selected = type == DeviceType.CAMERA,
+                        onClick = { type = DeviceType.CAMERA },
+                        label = { Text("Cámara") },
+                        leadingIcon = { Icon(Icons.Default.Videocam, null) }
+                    )
                 }
 
-                // --- CAMPOS RESTANTES ---
+                HorizontalDivider()
+
+                // Campos Comunes
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
@@ -172,10 +108,7 @@ fun ServerFormDialog(
                     singleLine = true
                 )
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = ip,
                         onValueChange = { ip = it },
@@ -185,8 +118,8 @@ fun ServerFormDialog(
                     )
                     OutlinedTextField(
                         value = port,
-                        onValueChange = { if (it.all { c -> c.isDigit() }) port = it },
-                        label = { Text("Puerto") },
+                        onValueChange = { port = it.filter { c -> c.isDigit() } },
+                        label = { Text("Puerto SSH") },
                         modifier = Modifier.width(100.dp),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true
@@ -194,103 +127,133 @@ fun ServerFormDialog(
                 }
 
                 OutlinedTextField(
-                    value = user,
-                    onValueChange = { user = it },
+                    value = username,
+                    onValueChange = { username = it },
                     label = { Text("Usuario SSH") },
                     modifier = Modifier.fillMaxWidth(),
-                    placeholder = { if(selectedType == DeviceType.CAMERA) Text("root") },
                     singleLine = true
                 )
 
                 OutlinedTextField(
                     value = password,
                     onValueChange = { password = it },
-                    label = { Text("Contraseña (Opcional)") },
+                    label = { Text("Contraseña SSH") },
+                    modifier = Modifier.fillMaxWidth(),
                     visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                    singleLine = true,
                     trailingIcon = {
-                        val icon = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff
+                        val image = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff
                         IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                            Icon(icon, contentDescription = "Toggle password")
+                            Icon(image, null)
                         }
                     },
-                    modifier = Modifier.fillMaxWidth()
+                    singleLine = true
                 )
 
+                // --- RECUPERADO: Campo para Clave SSH ---
                 OutlinedTextField(
                     value = sshKeyPath,
                     onValueChange = { sshKeyPath = it },
-                    label = { Text("Ruta SSH Key") },
-                    placeholder = { Text("Seleccionar archivo...") },
-                    readOnly = true,
+                    label = { Text("Ruta Clave Privada (Opcional)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("/ruta/a/id_rsa") },
                     singleLine = true,
                     trailingIcon = {
-                        IconButton(onClick = { pickerLauncher.launch() }) {
-                            Icon(Icons.Default.FolderOpen, contentDescription = "Abrir explorador")
+                        IconButton(onClick = { launcher.launch() }) {
+                            Icon(Icons.Default.AttachFile, contentDescription = "Seleccionar archivo")
                         }
-                    },
-                    modifier = Modifier.fillMaxWidth()
+                    }
                 )
 
-                // --- SELECTOR DE ICONO ---
-                ExposedDropdownMenuBox(
-                    expanded = iconExpanded,
-                    onExpandedChange = { iconExpanded = !iconExpanded }
-                ) {
+                // --- SECCIÓN ESPECÍFICA DE CÁMARA ---
+                if (type == DeviceType.CAMERA) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Configuración de Video", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+
                     OutlinedTextField(
-                        value = selectedIcon.replaceFirstChar { it.uppercase() },
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Icono") },
-                        leadingIcon = {
-                            Icon(getIconByName(selectedIcon), contentDescription = null)
-                        },
-                        trailingIcon = {
-                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = iconExpanded)
-                        },
-                        modifier = Modifier.menuAnchor().fillMaxWidth()
+                        value = cameraProtocol,
+                        onValueChange = { cameraProtocol = it },
+                        label = { Text("Protocolo") },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = false
                     )
-                    ExposedDropdownMenu(
-                        expanded = iconExpanded,
-                        onDismissRequest = { iconExpanded = false }
-                    ) {
-                        iconOptions.forEach { option ->
-                            DropdownMenuItem(
-                                text = { Text(option.replaceFirstChar { it.uppercase() }) },
-                                onClick = {
-                                    selectedIcon = option
-                                    iconExpanded = false
-                                },
-                                leadingIcon = {
-                                    Icon(getIconByName(option), contentDescription = null)
-                                }
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(
+                            value = cameraPort,
+                            onValueChange = { cameraPort = it.filter { c -> c.isDigit() } },
+                            label = { Text("Puerto Video") },
+                            modifier = Modifier.width(120.dp),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            singleLine = true
+                        )
+
+                        // Selector de Calidad (Alta/Baja)
+                        var expandedStream by remember { mutableStateOf(false) }
+                        Box(modifier = Modifier.weight(1f)) {
+                            OutlinedTextField(
+                                value = if (cameraStream == "ch0_0.h264") "Alta (Main)" else "Baja (Sub)",
+                                onValueChange = {},
+                                label = { Text("Calidad Stream") },
+                                modifier = Modifier.fillMaxWidth(),
+                                readOnly = true,
+                                trailingIcon = { Icon(Icons.Default.ArrowDropDown, null) }
                             )
+                            Box(modifier = Modifier.matchParentSize().clickable { expandedStream = true })
+
+                            DropdownMenu(
+                                expanded = expandedStream,
+                                onDismissRequest = { expandedStream = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Alta Calidad (ch0_0.h264)") },
+                                    onClick = { cameraStream = "ch0_0.h264"; expandedStream = false }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Baja Calidad (ch0_1.h264)") },
+                                    onClick = { cameraStream = "ch0_1.h264"; expandedStream = false }
+                                )
+                            }
                         }
                     }
                 }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Botones de Acción
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text("Cancelar")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = {
+                            val newServer = Server(
+                                id = server?.id ?: 0,
+                                name = name,
+                                ip = ip,
+                                port = port.toIntOrNull() ?: 22,
+                                username = username,
+                                password = password.ifBlank { null },
+                                type = type,
+                                // Guardamos la clave SSH
+                                sshKeyPath = sshKeyPath.ifBlank { null },
+                                // Guardar campos de cámara
+                                cameraProtocol = if (type == DeviceType.CAMERA) cameraProtocol else null,
+                                cameraPort = if (type == DeviceType.CAMERA) (cameraPort.toIntOrNull() ?: 8554) else null,
+                                cameraStream = if (type == DeviceType.CAMERA) cameraStream else null
+                            )
+                            onConfirm(newServer)
+                        },
+                        enabled = name.isNotBlank() && ip.isNotBlank() && username.isNotBlank()
+                    ) {
+                        Text("Guardar")
+                    }
+                }
             }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    onConfirm(
-                        name,
-                        ip,
-                        port.toIntOrNull() ?: 22,
-                        user,
-                        password.ifBlank { null },
-                        sshKeyPath.ifBlank { null },
-                        selectedIcon,
-                        selectedType // Enviamos el tipo seleccionado
-                    )
-                },
-                enabled = name.isNotBlank() && ip.isNotBlank() && user.isNotBlank()
-            ) {
-                Text(if (serverToEdit == null) "Guardar" else "Actualizar")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancelar") }
         }
-    )
+    }
 }

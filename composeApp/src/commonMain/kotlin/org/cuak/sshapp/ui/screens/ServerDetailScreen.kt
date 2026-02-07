@@ -19,6 +19,7 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import org.cuak.sshapp.models.DeviceType
 import org.cuak.sshapp.models.Server
+import org.cuak.sshapp.models.rtspUrl
 import org.cuak.sshapp.ui.components.RtspVideoPlayer
 import org.cuak.sshapp.ui.screens.tabs.MonitorTabContent
 import org.cuak.sshapp.ui.screens.tabs.ProcessesTabContent
@@ -139,7 +140,7 @@ data class ServerDetailScreen(val serverId: Long) : Screen {
                                 ) {
                                     // --- REPRODUCTOR RTSP ---
                                     RtspVideoPlayer(
-                                        url = "rtsp://${srv.ip}:8554/ch0_0.h264", // Usamos 'srv' (la variable segura del let)
+                                        url = srv.rtspUrl,
                                         modifier = Modifier.fillMaxSize(),
                                         onStatusChange = { status ->
                                             // Este callback es obligatorio según la definición expect/actual

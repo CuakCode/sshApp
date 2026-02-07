@@ -11,7 +11,10 @@ CREATE TABLE ServerEntity (
     password TEXT,
     sshKeyPath TEXT,
     iconName TEXT NOT NULL DEFAULT 'dns',
-    type TEXT AS DeviceType NOT NULL DEFAULT 'SERVER' -- Nuevo campo mapeado al Enum
+    type TEXT AS DeviceType NOT NULL DEFAULT 'SERVER',
+    camera_protocol TEXT DEFAULT "RTSP",
+    camera_port INTEGER AS Int DEFAULT 8554,
+    camera_stream TEXT DEFAULT "ch0_0.h264"
 );
 
 -- Tabla para almacenar el historial de métricas (opcional, pero útil)
@@ -29,12 +32,12 @@ CREATE TABLE MetricHistory (
 -- CONSULTAS PARA SERVIDORES
 
 insertServer:
-INSERT INTO ServerEntity(name, ip, port, username, password, sshKeyPath, iconName, type)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+INSERT INTO ServerEntity(name, ip, port, username, password, sshKeyPath, iconName, type, camera_protocol, camera_port, camera_stream)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 updateServer:
 UPDATE ServerEntity
-SET name = ?, ip = ?, port = ?, username = ?, password = ?, sshKeyPath = ?, iconName = ?, type = ?
+SET name = ?, ip = ?, port = ?, username = ?, password = ?, sshKeyPath = ?, iconName = ?, type = ?, camera_protocol = ?, camera_port = ?, camera_stream = ?
 WHERE id = ?;
 
 deleteServer:

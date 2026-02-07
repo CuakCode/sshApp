@@ -11,12 +11,12 @@ interface DatabaseDriverFactory {
     fun createDriver(): SqlDriver
 }
 
-// 2. Función helper para crear la base de datos usando la fábrica
 fun createDatabase(factory: DatabaseDriverFactory): ServerDatabase {
     val driver = factory.createDriver()
 
-    // Adaptador para convertir Long (SQL) a Int (Kotlin)
-    val portAdapter = object : ColumnAdapter<Int, Long> {
+    // Adaptador reutilizable para convertir Long (SQL) a Int (Kotlin)
+    // Sirve tanto para el puerto SSH como para el puerto de la Cámara
+    val intToLongAdapter = object : ColumnAdapter<Int, Long> {
         override fun decode(databaseValue: Long): Int = databaseValue.toInt()
         override fun encode(value: Int): Long = value.toLong()
     }
@@ -27,7 +27,7 @@ fun createDatabase(factory: DatabaseDriverFactory): ServerDatabase {
             return try {
                 DeviceType.valueOf(databaseValue)
             } catch (e: Exception) {
-                DeviceType.SERVER // Valor por defecto
+                DeviceType.SERVER
             }
         }
 
@@ -39,8 +39,9 @@ fun createDatabase(factory: DatabaseDriverFactory): ServerDatabase {
     return ServerDatabase(
         driver = driver,
         ServerEntityAdapter = ServerEntity.Adapter(
-            portAdapter = portAdapter,
-            typeAdapter = deviceTypeAdapter // <--- ¡AQUÍ FALTABA ESTA LÍNEA!
+            portAdapter = intToLongAdapter,
+            typeAdapter = deviceTypeAdapter,
+            camera_portAdapter = intToLongAdapter
         )
     )
 }

@@ -105,39 +105,18 @@ class HomeViewModel(
 
     // --- Operaciones CRUD ---
 
-    fun addServer(name: String, ip: String, port: Int, user: String, pass: String?, keyPath: String?, iconName: String, type: DeviceType) {
+    fun addServer(server: Server) {
         screenModelScope.launch {
-            repository.addServer(
-                Server(
-                    name = name,
-                    ip = ip,
-                    port = port,
-                    username = user,
-                    password = pass,
-                    sshKeyPath = keyPath,
-                    iconName = iconName,
-                    type = type
-                )
-            )
+            // Aseguramos que el ID sea 0 para que la BD genere uno nuevo
+            repository.addServer(server.copy(id = 0))
         }
     }
 
-    fun updateServer(id: Long, name: String, ip: String, port: Int, user: String, pass: String?, key: String?, icon: String, type: DeviceType) {
+    // Actualiza usando el objeto completo
+    fun updateServer(server: Server) {
         screenModelScope.launch {
-            repository.updateServer(
-                Server(
-                    id = id,
-                    name = name,
-                    ip = ip,
-                    port = port,
-                    username = user,
-                    password = pass,
-                    sshKeyPath = key,
-                    iconName = icon,
-                    type = type
-                )
-            )
-            dismissOptions()
+            repository.updateServer(server)
+            dismissOptions() // Cierra el menú inferior si estaba abierto
         }
     }
 

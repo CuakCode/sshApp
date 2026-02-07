@@ -31,7 +31,10 @@ class ServerRepository(database: ServerDatabase) {
             password = server.password,
             sshKeyPath = server.sshKeyPath,
             iconName = server.iconName,
-            type = server.type
+            type = server.type,
+            camera_protocol = server.cameraProtocol,
+            camera_port = server.cameraPort,
+            camera_stream = server.cameraStream
         )
     }
 
@@ -47,6 +50,9 @@ class ServerRepository(database: ServerDatabase) {
             sshKeyPath = server.sshKeyPath,
             iconName = server.iconName,
             type = server.type,
+            camera_protocol = server.cameraProtocol,
+            camera_port = server.cameraPort,
+            camera_stream = server.cameraStream,
             id = server.id
         )
     }
@@ -66,7 +72,10 @@ class ServerRepository(database: ServerDatabase) {
         sshKeyPath = sshKeyPath,
         iconName = iconName,
         type = type,
-        status = ServerStatus.UNKNOWN
+        status = ServerStatus.UNKNOWN,
+        cameraProtocol = camera_protocol,
+        cameraPort = camera_port,
+        cameraStream = camera_stream
     )
     suspend fun getServerById(id: Long): Server? {
         return queries.selectServerById(id).executeAsOneOrNull()?.toDomain()

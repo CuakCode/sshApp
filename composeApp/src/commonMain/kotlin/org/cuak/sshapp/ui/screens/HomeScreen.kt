@@ -129,13 +129,14 @@ private fun HomeScreenContent(
         // 4. Diálogo de Edición
         if (showEditDialog && selectedServer != null) {
             ServerFormDialog(
-                serverToEdit = selectedServer,
+                server = selectedServer,
                 onDismiss = {
                     showEditDialog = false
                     viewModel.dismissOptions()
                 },
-                onConfirm = { name, ip, port, user, pass, key, icon, type ->
-                    viewModel.updateServer(selectedServer.id, name, ip, port, user, pass, key, icon, type)
+                onConfirm = { updatedServer ->
+                    // Pasamos el objeto completo al ViewModel
+                    viewModel.updateServer(updatedServer)
                     showEditDialog = false
                 }
             )
@@ -144,9 +145,11 @@ private fun HomeScreenContent(
         // 5. Diálogo de Añadir
         if (showAddDialog) {
             ServerFormDialog(
+                server = null, // Es nuevo, así que null
                 onDismiss = { showAddDialog = false },
-                onConfirm = { name, ip, port, user, pass, key, icon, type ->
-                    viewModel.addServer(name, ip, port, user, pass, key, icon, type)
+                onConfirm = { newServer ->
+                    // Pasamos el objeto completo al ViewModel
+                    viewModel.addServer(newServer)
                     showAddDialog = false
                 }
             )
