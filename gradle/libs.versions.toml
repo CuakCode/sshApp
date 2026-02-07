@@ -22,8 +22,7 @@ filekit = "0.12.0"
 sshj = "0.38.0"
 bouncycastle = "1.77"
 slf4j = "2.0.9"
-libvlc = "3.6.5"
-vlcj = "4.12.1"
+
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -58,8 +57,6 @@ sshj = { module = "com.hierynomus:sshj", version.ref = "sshj" }
 bouncycastle-prov = { module = "org.bouncycastle:bcprov-jdk15to18", version.ref = "bouncycastle" }
 bouncycastle-pkix = { module = "org.bouncycastle:bcpkix-jdk15to18", version.ref = "bouncycastle" }
 slf4j-nop = { module = "org.slf4j:slf4j-nop", version.ref = "slf4j" }
-android-libvlc = { module = "org.videolan.android:libvlc-all", version.ref = "libvlc" }
-desktop-vlcj = { module = "uk.co.caprica:vlcj", version.ref = "vlcj" }
 
 
 [plugins]

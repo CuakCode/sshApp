@@ -1,119 +1,108 @@
 package org.cuak.sshapp.ui.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Tv
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.awt.SwingPanel
 import androidx.compose.ui.graphics.Color
-import uk.co.caprica.vlcj.factory.discovery.NativeDiscovery
-import uk.co.caprica.vlcj.player.component.EmbeddedMediaPlayerComponent
-import uk.co.caprica.vlcj.player.base.MediaPlayer
-import uk.co.caprica.vlcj.player.base.MediaPlayerEventAdapter
-import java.awt.event.HierarchyEvent
-import java.awt.event.HierarchyListener
-import javax.swing.SwingUtilities
+import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import java.io.File
 
 @Composable
-actual fun RtspVideoPlayer(
-    url: String,
-    modifier: Modifier
-) {
-    println("[RTSP DEBUG] Composable iniciado. URL objetivo: $url")
+actual fun RtspVideoPlayer(url: String, modifier: Modifier) {
+    val scope = rememberCoroutineScope()
 
-    val vlcFound = remember { NativeDiscovery().discover() }
-
-    if (!vlcFound) {
-        Box(modifier = modifier, contentAlignment = Alignment.Center) {
-            Text("VLC no encontrado. Instala VLC Media Player en tu sistema.")
-        }
-        return
-    }
-
-    val mediaPlayerComponent = remember {
-        object : EmbeddedMediaPlayerComponent() {}
-    }
-
+    // Gestionamos el ciclo de vida del proceso ffplay
     DisposableEffect(url) {
-        val player = mediaPlayerComponent.mediaPlayer()
+        var process: Process? = null
 
-        // Debug events
-        val eventAdapter = object : MediaPlayerEventAdapter() {
-            override fun playing(mediaPlayer: MediaPlayer?) {
-                println("[RTSP DEBUG] VLC Event: PLAYING")
-            }
-            override fun error(mediaPlayer: MediaPlayer?) {
-                println("[RTSP DEBUG] VLC Event: ERROR")
-            }
-        }
-        player.events().addMediaPlayerEventListener(eventAdapter)
+        // Lanzamos el proceso en un hilo IO para no bloquear la UI
+        val job = scope.launch(Dispatchers.IO) {
+            try {
+                // COMANDO EXACTO QUE HAS COMPROBADO QUE FUNCIONA:
+                // ffplay -fflags nobuffer -flags low_delay -framedrop -i <URL>
+                // Añadimos:
+                // -autoexit: Para que se cierre si falla el stream
+                // -window_title: Para identificar la ventana
+                // -x 1280 -y 720: (Opcional) Forzar tamaño inicial si se quiere
 
-        val options = arrayOf(
-            ":rtsp-tcp",
-            ":network-caching=300",
-            ":clock-jitter=0",
-            ":clock-synchro=0",
-            "-vvv"
-        )
+                val command = listOf(
+                    "ffplay",
+                    "-fflags", "nobuffer",
+                    "-flags", "low_delay",
+                    "-framedrop",
+                    "-autoexit",
+                    "-window_title", "Cámara en Vivo - $url",
+                    "-i", url
+                )
 
-        var isPlayingAttempted = false
+                println("[FFPLAY] Iniciando: ${command.joinToString(" ")}")
 
-        val hierarchyListener = object : HierarchyListener {
-            override fun hierarchyChanged(e: HierarchyEvent) {
-                if ((e.changeFlags and HierarchyEvent.DISPLAYABILITY_CHANGED.toLong()) != 0L) {
-                    SwingUtilities.invokeLater {
-                        if (mediaPlayerComponent.isDisplayable && !isPlayingAttempted) {
-                            isPlayingAttempted = true
-                            println("[RTSP DEBUG] Play (Hierarchy)")
-                            player.media().play(url, *options)
-                        }
-                    }
-                }
+                process = ProcessBuilder(command)
+                    // Redirigimos logs para ver errores en la consola del IDE si hace falta
+                    .redirectErrorStream(true)
+                    .start()
+
+            } catch (e: Exception) {
+                e.printStackTrace()
+                println("[FFPLAY] Error al lanzar ffplay: ${e.message}")
             }
         }
 
-        mediaPlayerComponent.addHierarchyListener(hierarchyListener)
-
-        SwingUtilities.invokeLater {
-            if (mediaPlayerComponent.isDisplayable && !isPlayingAttempted) {
-                isPlayingAttempted = true
-                println("[RTSP DEBUG] Play (Immediate)")
-                player.media().play(url, *options)
-            }
-        }
-
+        // Al salir de la pantalla (onDispose), matamos el proceso
         onDispose {
-            println("[RTSP DEBUG] Limpiando recursos...")
-            mediaPlayerComponent.removeHierarchyListener(hierarchyListener)
-            player.events().removeMediaPlayerEventListener(eventAdapter)
-
-            SwingUtilities.invokeLater {
-                try {
-                    // 1. Detenemos la reproducción
-                    if (player.status().isPlaying) {
-                        player.controls().stop()
-                    }
-
-                    // 2. CRUCIAL: Solo liberamos el componente.
-                    // NO llamar a player.release() aquí, el componente lo hace internamente.
-                    mediaPlayerComponent.release()
-
-                    println("[RTSP DEBUG] Componente liberado correctamente.")
-                } catch (e: Exception) {
-                    println("[RTSP DEBUG] Excepción al liberar: ${e.message}")
-                    e.printStackTrace()
-                }
-            }
+            println("[FFPLAY] Cerrando proceso...")
+            process?.destroy() // Intento suave
+            process?.destroyForcibly() // Asegurar cierre
+            job.cancel()
         }
     }
 
-    SwingPanel(
-        background = Color.Black,
-        modifier = modifier.fillMaxSize(),
-        factory = { mediaPlayerComponent }
-    )
+    // UI Placeholder dentro de la App
+    // Como ffplay abre su propia ventana flotante, en la app mostramos que está activo.
+    Box(
+        modifier = modifier
+            .background(Color.Black)
+            .padding(16.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(
+                imageVector = Icons.Default.Tv,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.height(48.dp)
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "Reproduciendo en ventana externa...",
+                color = Color.White,
+                style = MaterialTheme.typography.bodyLarge
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Cierra esta pestaña para detener el vídeo.",
+                color = Color.Gray,
+                style = MaterialTheme.typography.bodySmall
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+        }
+    }
 }

@@ -174,14 +174,26 @@ data class ServerDetailScreen(val serverId: Long) : Screen {
     }
 
     // --- 2. GENERACIÓN DE URL CON CREDENCIALES ---
+// --- VERSIÓN FINAL Y OPTIMIZADA ---
     private fun Server.getAuthenticatedRtspUrl(): String {
         val cleanIp = this.ip.trim()
 
-        // Usamos el puerto de la API web (1984) que ya sabemos que funciona
-        // y pedimos el stream "test" en formato mp4 o flv
-        val url = "http://$cleanIp:1984/api/stream.mp4?src=test"
+        //rtsp://192.168.0.11:8554/ch0_0.h264
+        // 1. PROTOCOLO: Usamos HTTP-FLV (Puerto 1984 de go2rtc)
+        //    Es TCP (estable), baja latencia y ligero.
+        //    VLC lo reproduce nativamente sin cortes.
+        val protocol = "rtsp"
+        val port = 8554
 
-        println("[VIDEO] URL Generada: $url")
+        // 2. FUENTE: Usamos 'ch0_1.h264' (Baja calidad)
+        //    Esto es lo que garantiza el BAJO CONSUMO DE DATOS.
+        //    Si quisieras alta calidad, cambiarías a ch0_0.h264
+        val streamSource = "ch0_1.h264"
+
+        // URL: http://192.168.0.11:1984/api/stream.flv?src=ch0_1.h264
+        val url = "$protocol://$cleanIp:$port/?src=$streamSource"
+
+        println("[VIDEO] URL Optimizada: $url")
         return url
     }
 }
