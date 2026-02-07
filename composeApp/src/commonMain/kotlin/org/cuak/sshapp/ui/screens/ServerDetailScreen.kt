@@ -191,7 +191,7 @@ data class ServerDetailScreen(val serverId: Long) : Screen {
         val streamSource = "ch0_1.h264"
 
         // URL: http://192.168.0.11:1984/api/stream.flv?src=ch0_1.h264
-        val url = "$protocol://$cleanIp:$port/?src=$streamSource"
+        val url = "$protocol://$cleanIp:$port/$streamSource"
 
         println("[VIDEO] URL Optimizada: $url")
         return url

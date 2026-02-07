@@ -6,3 +6,11 @@ import androidx.compose.ui.Modifier
 @Composable
 actual fun RtspVideoPlayer(url: String, modifier: Modifier) {
 }
+
+@Composable
+actual fun RtspVideoPlayer(
+    url: String,
+    modifier: Modifier,
+    onStatusChange: (String) -> Unit
+) {
+}

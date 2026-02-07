@@ -106,6 +106,7 @@ kotlin {
                 implementation(compose.desktop.currentOs)
                 implementation(libs.kotlinx.coroutinesSwing)
                 implementation(libs.sqldelight.jvm.driver)
+                implementation("org.bytedeco:javacv-platform:1.5.10")
             }
         }
 
