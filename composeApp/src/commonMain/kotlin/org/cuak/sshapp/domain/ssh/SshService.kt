@@ -13,15 +13,19 @@ interface SshClient {
 
     suspend fun openTerminal(server: Server): Result<SshTerminalSession>
     suspend fun fetchProcesses(server: Server): Result<List<ProcessInfo>>
-    suspend fun listRemoteFiles(server: Server, path: String): Result<List<SftpFile>> {
-        return Result.failure(Exception("Not implemented yet"))
-    }
+    suspend fun listRemoteFiles(server: Server, path: String): Result<List<SftpFile>>
 
-    suspend fun uploadFile(server: Server, localPath: String, remotePath: String): Result<Unit> {
-        return Result.failure(Exception("Not implemented yet"))
-    }
+    suspend fun uploadFile(
+        server: Server,
+        localPath: String,
+        remotePath: String,
+        onProgress: (Float) -> Unit // Float 0.0 a 1.0
+    ): Result<Unit>
 
-    suspend fun downloadFile(server: Server, remotePath: String, localPath: String): Result<Unit> {
-        return Result.failure(Exception("Not implemented yet"))
-    }
+    suspend fun downloadFile(
+        server: Server,
+        remotePath: String,
+        localPath: String,
+        onProgress: (Float) -> Unit // Float 0.0 a 1.0
+    ): Result<Unit>
 }

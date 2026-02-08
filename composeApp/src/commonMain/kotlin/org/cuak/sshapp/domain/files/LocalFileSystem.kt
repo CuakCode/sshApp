@@ -6,4 +6,5 @@ interface LocalFileSystem {
     fun getInitialPath(): String
     fun getParentPath(path: String): String
     fun listFiles(path: String): List<SftpFile>
+    fun openFile(path: String)
 }

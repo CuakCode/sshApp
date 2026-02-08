@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -13,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.koin.koinScreenModel
@@ -21,7 +23,7 @@ import cafe.adriel.voyager.navigator.currentOrThrow
 import org.cuak.sshapp.models.DeviceType
 import org.cuak.sshapp.models.rtspUrl
 import org.cuak.sshapp.ui.components.RtspVideoPlayer
-import org.cuak.sshapp.ui.screens.tabs.FileManagerTabContent // <--- NUEVO IMPORT
+import org.cuak.sshapp.ui.screens.tabs.FileManagerTabContent
 import org.cuak.sshapp.ui.screens.tabs.FileManagerViewModel
 import org.cuak.sshapp.ui.screens.tabs.MonitorTabContent
 import org.cuak.sshapp.ui.screens.tabs.ProcessesTabContent
@@ -44,8 +46,6 @@ data class ServerDetailScreen(val serverId: Long) : Screen {
         // --- 1. LÓGICA DE PESTAÑAS DINÁMICAS ---
         val isCamera = server?.type == DeviceType.CAMERA
 
-        // Si es cámara, insertamos "Cámara" al principio.
-        // AÑADIDO: "Archivos" al final de la lista.
         val tabs = remember(isCamera) {
             if (isCamera) {
                 listOf("Cámara", "Monitor", "Procesos", "Terminal", "Archivos")
@@ -95,9 +95,7 @@ data class ServerDetailScreen(val serverId: Long) : Screen {
                             when (tabs.getOrNull(selectedTabIndex)) {
                                 "Monitor" -> viewModel.fetchMetrics()
                                 "Procesos" -> viewModel.fetchProcesses()
-                                // FileManager tiene su propio botón de refresco interno (navegación),
-                                // pero podrías conectarlo aquí si quisieras forzar recarga.
-                                else -> { /* No requiere refresco manual global */ }
+                                else -> { /* Archivos y Terminal gestionan su propio refresco */ }
                             }
                         }) {
                             Icon(Icons.Default.Refresh, "Refrescar")
@@ -108,32 +106,40 @@ data class ServerDetailScreen(val serverId: Long) : Screen {
         ) { padding ->
             Column(modifier = Modifier.padding(padding).fillMaxSize()) {
 
-                // Barra de Pestañas Scrollable para asegurar que caben todas
-                ScrollableTabRow(
-                    selectedTabIndex = selectedTabIndex,
-                    edgePadding = 0.dp // Opcional: ajusta el padding inicial
-                ) {
-                    tabs.forEachIndexed { index, title ->
-                        Tab(
-                            selected = selectedTabIndex == index,
-                            onClick = { selectedTabIndex = index },
-                            text = { Text(title) },
-                            icon = {
-                                val icon = when (title) {
-                                    "Cámara" -> Icons.Default.Videocam
-                                    "Monitor" -> Icons.Default.Speed
-                                    "Procesos" -> Icons.Default.Memory
-                                    "Terminal" -> Icons.Default.Terminal
-                                    "Archivos" -> Icons.Default.Folder // <--- Icono para Archivos
-                                    else -> Icons.Default.Circle
+                // --- BARRA DE PESTAÑAS ---
+                // Usamos TabRow en lugar de ScrollableTabRow para que ocupe todo el ancho
+                if (tabs.isNotEmpty()) {
+                    TabRow(
+                        selectedTabIndex = selectedTabIndex,
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        contentColor = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        tabs.forEachIndexed { index, title ->
+                            Tab(
+                                selected = selectedTabIndex == index,
+                                onClick = { selectedTabIndex = index },
+                                text = {
+                                    // Texto acortado si es necesario
+                                    Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                },
+                                icon = {
+                                    val icon = when (title) {
+                                        "Cámara" -> Icons.Default.Videocam
+                                        "Monitor" -> Icons.Default.Speed
+                                        "Procesos" -> Icons.Default.Memory
+                                        "Terminal" -> Icons.Default.Terminal
+                                        "Archivos" -> Icons.Default.Folder
+                                        else -> Icons.Default.Circle
+                                    }
+                                    Icon(icon, null)
                                 }
-                                Icon(icon, null)
-                            }
-                        )
+                            )
+                        }
                     }
                 }
 
-                // Contenido de las Pestañas
+                // --- CONTENIDO DE LAS PESTAÑAS ---
                 Box(modifier = Modifier.fillMaxSize()) {
                     val currentTabTitle = tabs.getOrNull(selectedTabIndex)
 
@@ -162,7 +168,7 @@ data class ServerDetailScreen(val serverId: Long) : Screen {
                         }
                         "Procesos" -> {
                             LaunchedEffect(Unit) {
-                                if(viewModel.processes.isEmpty()) viewModel.fetchProcesses()
+                                if (viewModel.processes.isEmpty()) viewModel.fetchProcesses()
                             }
                             ProcessesTabContent(
                                 processes = viewModel.processes,
@@ -179,11 +185,15 @@ data class ServerDetailScreen(val serverId: Long) : Screen {
                                 onStart = { viewModel.startTerminal() }
                             )
                         }
-                        "Archivos" -> { // <--- NUEVO BLOQUE DE CONTENIDO
-                            // Necesitamos que server no sea null para iniciar el cliente SFTP
-                            server?.let { srv ->
-                                val fileManagerViewModel = koinScreenModel<FileManagerViewModel> { parametersOf(srv) }
+                        "Archivos" -> {
+                            // Inyección correcta con Koin pasando parámetros
+                            if (server != null) {
+                                val fileManagerViewModel = koinScreenModel<FileManagerViewModel> { parametersOf(server) }
                                 FileManagerTabContent(viewModel = fileManagerViewModel)
+                            } else {
+                                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    CircularProgressIndicator()
+                                }
                             }
                         }
                     }

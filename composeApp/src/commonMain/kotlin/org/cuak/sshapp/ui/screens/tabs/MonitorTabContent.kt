@@ -1,3 +1,4 @@
+// composeApp/src/commonMain/kotlin/org/cuak/sshapp/ui/screens/tabs/MonitorTabContent.kt
 package org.cuak.sshapp.ui.screens.tabs
 
 import androidx.compose.foundation.BorderStroke
@@ -156,8 +157,9 @@ fun DiskUsageBar(label: String, percentage: Double) {
             Text("${percentage.toInt()}%", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
         }
         Spacer(modifier = Modifier.height(4.dp))
+        // CORRECCIÓN: 'progress' espera un Float directo, no una lambda
         LinearProgressIndicator(
-            progress = { (percentage / 100.0).toFloat() },
+            progress = (percentage / 100.0).toFloat().coerceIn(0f, 1f),
             modifier = Modifier.fillMaxWidth().height(8.dp),
             color = getStatusColor(percentage, 60.0, 80.0),
             trackColor = MaterialTheme.colorScheme.surfaceVariant,

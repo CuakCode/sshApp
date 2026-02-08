@@ -8,24 +8,26 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import net.schmizz.sshj.SSHClient
+import net.schmizz.sshj.common.StreamCopier
 import net.schmizz.sshj.connection.channel.direct.Session
+import net.schmizz.sshj.sftp.SFTPClient
 import net.schmizz.sshj.transport.verification.PromiscuousVerifier
 import net.schmizz.sshj.userauth.keyprovider.KeyProvider
 import net.schmizz.sshj.userauth.method.AuthKeyboardInteractive
 import net.schmizz.sshj.userauth.method.ChallengeResponseProvider
 import net.schmizz.sshj.userauth.password.Resource
+import net.schmizz.sshj.xfer.FileSystemFile
+import net.schmizz.sshj.xfer.TransferListener
 import org.cuak.sshapp.models.DeviceType
 import org.cuak.sshapp.models.PortInfo
 import org.cuak.sshapp.models.ProcessInfo
 import org.cuak.sshapp.models.Server
 import org.cuak.sshapp.models.ServerMetrics
 import org.cuak.sshapp.models.SftpFile
+import java.io.File
 import java.io.OutputStream
 import java.util.concurrent.TimeUnit
 import kotlin.coroutines.coroutineContext
-import net.schmizz.sshj.sftp.SFTPClient
-import net.schmizz.sshj.sftp.RemoteResourceInfo
-import net.schmizz.sshj.xfer.FileSystemFile
 
 /**
  * Cliente SSH base compartido para JVM y Android.
@@ -33,10 +35,6 @@ import net.schmizz.sshj.xfer.FileSystemFile
  */
 abstract class AbstractSshjClient : SshClient {
 
-    /**
-     * Hook para que las subclases configuren el cliente antes de conectar.
-     * Útil para Android (BouncyCastle) o configuraciones específicas.
-     */
     protected open fun onConfigureClient(client: SSHClient) {
         // Por defecto no hace nada
     }
@@ -48,13 +46,9 @@ abstract class AbstractSshjClient : SshClient {
             onConfigureClient(client)
             client.connectAndAuthenticate(server)
 
-            // --- COMANDO DE CPU ---
             val cpuCmd = if (server.type == DeviceType.CAMERA) {
-                // ESTRATEGIA CÁMARA (Yi Hack / BusyBox)
                 "top -bn1 | grep '^CPU' | tr -d '%' | awk '{print \$2 + \$4}'"
             } else {
-                // ESTRATEGIA SERVIDOR (Linux Estándar)
-                // Suma User + System
                 "top -bn1 | grep -i 'Cpu(s)' | awk '{print \$2 + \$4}'"
             }
 
@@ -62,16 +56,11 @@ abstract class AbstractSshjClient : SshClient {
                 val output = client.execOneCommand(cpuCmd)
                 val cleanOutput = output.lines().firstOrNull { it.any { c -> c.isDigit() } } ?: "0.0"
                 cleanOutput.trim().toDoubleOrNull() ?: 0.0
-            } catch (e: Exception) {
-                0.0
-            }
+            } catch (e: Exception) { 0.0 }
 
-            // --- COMANDO DE RAM ---
             val ramCmd = if (server.type == DeviceType.CAMERA) {
-                // BusyBox suele necesitar free simple
                 "free | awk 'NR==2{printf \"%.2f\", \$3*100/\$2 }'"
             } else {
-                // Linux estándar soporta -m
                 "free -m | awk 'NR==2{printf \"%.2f\", \$3*100/\$2 }'"
             }
 
@@ -80,20 +69,17 @@ abstract class AbstractSshjClient : SshClient {
                 output.trim().toDoubleOrNull() ?: 0.0
             } catch (e: Exception) { 0.0 }
 
-            // --- DISCO ---
             val diskVal = try {
                 val cmd = "df -P / | awk 'NR==2{print \$5}' | tr -d '%'"
                 client.execOneCommand(cmd).toDoubleOrNull() ?: 0.0
             } catch (e: Exception) { 0.0 }
 
-            // --- TEMPERATURA ---
             val tempVal = try {
                 val cmd = "cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null || cat /sys/class/hwmon/hwmon0/temp1_input 2>/dev/null"
                 val raw = client.execOneCommand(cmd)
                 (raw.toDoubleOrNull() ?: 0.0) / 1000.0
             } catch (e: Exception) { 0.0 }
 
-            // --- PUERTOS ---
             val ports = try {
                 val cmd = "netstat -nlp | grep LISTEN"
                 val output = client.execOneCommand(cmd)
@@ -126,12 +112,11 @@ abstract class AbstractSshjClient : SshClient {
             client.connectAndAuthenticate(server)
 
             val session = client.startSession()
-            session.allocateDefaultPTY() // IMPORTANTE: Pseudo-terminal
+            session.allocateDefaultPTY()
             val shell = session.startShell()
 
             Result.success(SshjTerminalSession(client, session, shell))
         } catch (e: Exception) {
-            e.printStackTrace()
             if (client.isConnected) client.disconnect()
             Result.failure(e)
         }
@@ -159,9 +144,8 @@ abstract class AbstractSshjClient : SshClient {
             client.connectAndAuthenticate(server)
             val session = client.startSession()
             try {
-                // Comando agresivo de apagado
                 val cmd = session.exec("sudo -S -p '' poweroff")
-                val password = server.password?.trim() ?: ""
+                val password = server.password?.trim()
                 cmd.outputStream.use { it.write((password + "\n").toByteArray()) }
                 cmd.join(2, TimeUnit.SECONDS)
                 Result.success(Unit)
@@ -169,7 +153,6 @@ abstract class AbstractSshjClient : SshClient {
                 session.close()
             }
         } catch (e: Exception) {
-            // Ignoramos error de desconexión abrupta (es normal al apagar)
             Result.success(Unit)
         } finally {
             if (client.isConnected) client.disconnect()
@@ -184,12 +167,10 @@ abstract class AbstractSshjClient : SshClient {
             client.connectAndAuthenticate(server)
 
             val processes = if (server.type == DeviceType.CAMERA) {
-                // ESTRATEGIA CÁMARA (BusyBox Top)
                 val cmd = "top -b -n 1"
                 val output = client.execOneCommand(cmd)
                 parseBusyBoxTop(output)
             } else {
-                // ESTRATEGIA SERVIDOR (Linux PS)
                 val cmd = "ps -e -o pid,user,%cpu,%mem,comm --sort=-%cpu | head -n 50"
                 val output = client.execOneCommand(cmd)
                 parseLinuxPs(output)
@@ -200,6 +181,116 @@ abstract class AbstractSshjClient : SshClient {
             Result.failure(e)
         } finally {
             if (client.isConnected) client.disconnect()
+        }
+    }
+
+    // --- 6. LISTAR ARCHIVOS REMOTOS (SFTP) ---
+    override suspend fun listRemoteFiles(server: Server, path: String): Result<List<SftpFile>> = withContext(Dispatchers.IO) {
+        val client = SSHClient()
+        try {
+            onConfigureClient(client)
+            client.connectAndAuthenticate(server)
+
+            val sftp: SFTPClient = client.newSFTPClient()
+            try {
+                val files = sftp.ls(path) ?: emptyList()
+                val sftpFiles = files.map { info ->
+                    SftpFile(
+                        name = info.name,
+                        path = info.path,
+                        isDirectory = info.isDirectory,
+                        size = info.attributes.size,
+                        permissions = info.attributes.permissions.toString(),
+                        lastModified = info.attributes.mtime * 1000L
+                    )
+                }.sortedWith(compareBy({ !it.isDirectory }, { it.name }))
+
+                Result.success(sftpFiles)
+            } finally {
+                sftp.close()
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        } finally {
+            if (client.isConnected) client.disconnect()
+        }
+    }
+
+    // --- 7. SUBIR ARCHIVO (SFTP CON PROGRESO) ---
+    override suspend fun uploadFile(
+        server: Server,
+        localPath: String,
+        remotePath: String,
+        onProgress: (Float) -> Unit
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        performTransfer(server) { sftp ->
+            val file = FileSystemFile(localPath)
+            val size = File(localPath).length()
+            // Pasamos el tamaño total al creador del listener
+            sftp.fileTransfer.transferListener = createListener(size, onProgress)
+            sftp.put(file, remotePath)
+        }
+    }
+
+    // --- 8. DESCARGAR ARCHIVO (SFTP CON PROGRESO) ---
+    override suspend fun downloadFile(
+        server: Server,
+        remotePath: String,
+        localPath: String,
+        onProgress: (Float) -> Unit
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        performTransfer(server) { sftp ->
+            val attrs = sftp.stat(remotePath)
+            val size = attrs.size
+            // Pasamos el tamaño total al creador del listener
+            sftp.fileTransfer.transferListener = createListener(size, onProgress)
+            sftp.get(remotePath, FileSystemFile(localPath))
+        }
+    }
+
+    // --- HELPERS PRIVADOS DE TRANSFERENCIA ---
+
+    private suspend fun performTransfer(server: Server, block: (SFTPClient) -> Unit): Result<Unit> {
+        val client = SSHClient()
+        return try {
+            onConfigureClient(client)
+            client.connectAndAuthenticate(server)
+            val sftp = client.newSFTPClient()
+            try {
+                block(sftp)
+                Result.success(Unit)
+            } finally {
+                sftp.close()
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        } finally {
+            if (client.isConnected) client.disconnect()
+        }
+    }
+
+    // --- CORRECCIÓN FINAL: IMPLEMENTACIÓN DE LISTENER ---
+    // Implementamos tanto TransferListener como StreamCopier.Listener
+    private fun createListener(totalSize: Long, onProgress: (Float) -> Unit): TransferListener {
+        return object : TransferListener, StreamCopier.Listener {
+
+            // Cuando SFTP inicia un directorio, devolvemos 'this' para seguir escuchando
+            override fun directory(name: String?): TransferListener {
+                return this
+            }
+
+            // Cuando SFTP inicia un archivo, devolvemos 'this' que ahora ES un StreamCopier.Listener
+            override fun file(name: String?, size: Long): StreamCopier.Listener {
+                return this
+            }
+
+            // Método real de progreso de StreamCopier.Listener
+            override fun reportProgress(transferred: Long) {
+                if (totalSize > 0) {
+                    val percent = transferred.toFloat() / totalSize.toFloat()
+                    onProgress(percent.coerceIn(0f, 1f))
+                }
+            }
         }
     }
 
@@ -223,38 +314,42 @@ abstract class AbstractSshjClient : SshClient {
                         val text = String(buffer, 0, read)
                         emit(text)
                     } else {
-                        delay(10) // Polling rápido para respuesta fluida
+                        delay(10)
                     }
                 }
-            } catch (e: Exception) {
-                // Fin de sesión normal o error de red
-            }
+            } catch (e: Exception) { /* Fin normal */ }
         }.flowOn(Dispatchers.IO)
 
         override suspend fun write(input: String) = withContext(Dispatchers.IO) {
             try {
                 outputStream.write(input.toByteArray())
                 outputStream.flush()
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
+            } catch (e: Exception) { e.printStackTrace() }
         }
 
         override fun close() {
             try {
                 session.close()
                 client.disconnect()
-            } catch (e: Exception) { /* Ignorar errores al cerrar */ }
+            } catch (e: Exception) { /* Ignorar */ }
         }
     }
 
-    // --- HELPERS PRIVADOS (Misma lógica que tenías) ---
+    // --- HELPERS DE CONEXIÓN Y PARSEO ---
 
     protected fun SSHClient.connectAndAuthenticate(server: Server) {
         addHostKeyVerifier(PromiscuousVerifier())
-        connect(server.ip, server.port)
 
-        val cleanPassword = server.password?.trim() ?: ""
+        if (server.ip.contains(":")) {
+            val parts = server.ip.split(":")
+            val ip = parts[0]
+            val port = parts[1].toIntOrNull() ?: 22
+            connect(ip, port)
+        } else {
+            connect(server.ip, 22)
+        }
+
+        val cleanPassword = server.password?.trim()
         if (!server.sshKeyPath.isNullOrBlank()) {
             val keyProvider: KeyProvider = loadKeys(server.sshKeyPath)
             authPublickey(server.username, keyProvider)
@@ -266,7 +361,7 @@ abstract class AbstractSshjClient : SshClient {
                     override fun getSubmethods() = emptyList<String>()
                     override fun init(r: Resource<*>?, n: String?, i: String?) {}
                     override fun shouldRetry() = false
-                    override fun getResponse(p: String?, e: Boolean) = cleanPassword.toCharArray()
+                    override fun getResponse(p: String?, e: Boolean) = cleanPassword?.toCharArray()
                 })
                 auth(server.username, kbi)
             }
@@ -288,7 +383,6 @@ abstract class AbstractSshjClient : SshClient {
     private fun parsePorts(netstatOutput: String): List<PortInfo> {
         val list = mutableListOf<PortInfo>()
         val lines = netstatOutput.lines()
-
         for (line in lines) {
             if (line.isBlank()) continue
             val parts = line.trim().split("\\s+".toRegex())
@@ -300,10 +394,7 @@ abstract class AbstractSshjClient : SshClient {
                     val port = portString.toIntOrNull()
                     val pidProgram = parts.find { it.contains("/") } ?: "?"
                     val processName = pidProgram.substringAfter("/")
-
-                    if (port != null) {
-                        list.add(PortInfo(port, protocol, processName))
-                    }
+                    if (port != null) list.add(PortInfo(port, protocol, processName))
                 } catch (e: Exception) { /* ignore */ }
             }
         }
@@ -313,7 +404,6 @@ abstract class AbstractSshjClient : SshClient {
     private fun parseLinuxPs(output: String): List<ProcessInfo> {
         val list = mutableListOf<ProcessInfo>()
         val lines = output.lines().drop(1)
-
         for (line in lines) {
             if (line.isBlank()) continue
             val parts = line.trim().split("\\s+".toRegex())
@@ -321,7 +411,6 @@ abstract class AbstractSshjClient : SshClient {
                 try {
                     val commandName = parts.subList(4, parts.size).joinToString(" ")
                     if (commandName == "ps" || commandName == "head") continue
-
                     list.add(ProcessInfo(
                         pid = parts[0],
                         user = parts[1],
@@ -338,7 +427,6 @@ abstract class AbstractSshjClient : SshClient {
     private fun parseBusyBoxTop(output: String): List<ProcessInfo> {
         val list = mutableListOf<ProcessInfo>()
         val lines = output.lines()
-
         var headerFound = false
         for (line in lines) {
             if (line.contains("PID") && line.contains("COMMAND")) {
@@ -346,13 +434,11 @@ abstract class AbstractSshjClient : SshClient {
                 continue
             }
             if (!headerFound || line.isBlank()) continue
-
             val parts = line.trim().split("\\s+".toRegex())
             if (parts.size >= 9) {
                 try {
                     val commandName = parts.subList(8, parts.size).joinToString(" ")
                     if (commandName.contains("top")) continue
-
                     list.add(ProcessInfo(
                         pid = parts[0],
                         user = parts[2],
@@ -364,70 +450,5 @@ abstract class AbstractSshjClient : SshClient {
             }
         }
         return list
-    }
-    override suspend fun listRemoteFiles(server: Server, path: String): Result<List<SftpFile>> = withContext(Dispatchers.IO) {
-        val client = SSHClient()
-        try {
-            onConfigureClient(client)
-            client.connectAndAuthenticate(server)
-            val sftp = client.newSFTPClient()
-            try {
-                val files = sftp.ls(path) ?: emptyList()
-                val sftpFiles = files.map {
-                    SftpFile(
-                        name = it.name,
-                        path = it.path,
-                        isDirectory = it.isDirectory,
-                        size = it.attributes.size,
-                        permissions = it.attributes.permissions.toString()
-                    )
-                }.sortedWith(compareBy({ !it.isDirectory }, { it.name }))
-                Result.success(sftpFiles)
-            } finally {
-                sftp.close()
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        } finally {
-            if (client.isConnected) client.disconnect()
-        }
-    }
-
-    override suspend fun uploadFile(server: Server, localPath: String, remotePath: String): Result<Unit> = withContext(Dispatchers.IO) {
-        val client = SSHClient()
-        try {
-            onConfigureClient(client)
-            client.connectAndAuthenticate(server)
-            val sftp = client.newSFTPClient()
-            try {
-                sftp.put(FileSystemFile(localPath), remotePath)
-                Result.success(Unit)
-            } finally {
-                sftp.close()
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        } finally {
-            if (client.isConnected) client.disconnect()
-        }
-    }
-
-    override suspend fun downloadFile(server: Server, remotePath: String, localPath: String): Result<Unit> = withContext(Dispatchers.IO) {
-        val client = SSHClient()
-        try {
-            onConfigureClient(client)
-            client.connectAndAuthenticate(server)
-            val sftp = client.newSFTPClient()
-            try {
-                sftp.get(remotePath, FileSystemFile(localPath))
-                Result.success(Unit)
-            } finally {
-                sftp.close()
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        } finally {
-            if (client.isConnected) client.disconnect()
-        }
     }
 }

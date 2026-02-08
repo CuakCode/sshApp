@@ -9,6 +9,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.ArrowDropUp
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material3.*
@@ -20,59 +22,77 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-// Eliminamos imports de Koin/Voyager aquí porque ya no se usan
 import org.cuak.sshapp.models.SftpFile
 import org.cuak.sshapp.ui.screens.tabs.FileManagerViewModel
+import org.cuak.sshapp.ui.screens.tabs.SortDirection
+import org.cuak.sshapp.ui.screens.tabs.SortOption
 
 @Composable
-fun FileManagerTabContent(viewModel: FileManagerViewModel) { // <--- CAMBIO: Recibe ViewModel
+fun FileManagerTabContent(viewModel: FileManagerViewModel) {
 
-    // Consumimos el estado del ViewModel pasado por parámetro
     val localFiles by viewModel.localFiles.collectAsState()
     val localPath by viewModel.localPath.collectAsState()
     val remoteFiles by viewModel.remoteFiles.collectAsState()
     val remotePath by viewModel.remotePath.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val statusMessage by viewModel.statusMessage.collectAsState()
+    val transferProgress by viewModel.transferProgress.collectAsState()
 
     Column(Modifier.fillMaxSize()) {
 
-        if (isLoading) {
+        // --- Barra de Ordenación ---
+        Row(
+            Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface).padding(4.dp),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Ordenar:", style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(end = 8.dp))
+            SortChip("Nombre", SortOption.NAME, viewModel)
+            SortChip("Tam.", SortOption.SIZE, viewModel)
+            SortChip("Fecha", SortOption.DATE, viewModel)
+        }
+        Divider()
+
+        // --- Barra de Estado y Progreso ---
+        if (transferProgress != null) {
+            Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.secondaryContainer).padding(8.dp)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("Transfiriendo...", style = MaterialTheme.typography.labelSmall)
+                    Text("${(transferProgress!! * 100).toInt()}%", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                }
+                Spacer(Modifier.height(4.dp))
+                LinearProgressIndicator(progress = transferProgress!!, modifier = Modifier.fillMaxWidth())
+            }
+        } else if (isLoading) {
             LinearProgressIndicator(Modifier.fillMaxWidth())
         }
 
-        if (statusMessage.isNotEmpty()) {
+        if (statusMessage.isNotEmpty() && transferProgress == null) {
             Text(
                 text = statusMessage,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.secondaryContainer)
-                    .padding(4.dp),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSecondaryContainer
+                modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant).padding(4.dp),
+                style = MaterialTheme.typography.bodySmall
             )
         }
 
+        // --- Paneles ---
         Row(Modifier.weight(1f)) {
-            // PANEL IZQUIERDO: LOCAL
             FilePanel(
                 modifier = Modifier.weight(1f),
                 title = "Local",
                 path = localPath,
                 files = localFiles,
                 onUpClick = { viewModel.navigateLocalUp() },
-                onItemClick = { if (it.isDirectory) viewModel.navigateLocal(it.path) },
+                onItemClick = {
+                    if (it.isDirectory) viewModel.navigateLocal(it.path)
+                    else viewModel.openLocalFile(it) // Abrir archivo
+                },
                 onTransferClick = { viewModel.upload(it) },
                 transferIcon = Icons.AutoMirrored.Filled.ArrowForward
             )
 
-            VerticalDivider(
-                modifier = Modifier.fillMaxHeight(),
-                thickness = 1.dp,
-                color = MaterialTheme.colorScheme.outlineVariant
-            )
+            VerticalDivider(modifier = Modifier.fillMaxHeight())
 
-            // PANEL DERECHO: REMOTO
             FilePanel(
                 modifier = Modifier.weight(1f),
                 title = "Remoto",
@@ -92,7 +112,25 @@ fun FileManagerTabContent(viewModel: FileManagerViewModel) { // <--- CAMBIO: Rec
     }
 }
 
-// ... (Las funciones FilePanel y FileItemRow se mantienen igual)
+@Composable
+fun SortChip(label: String, option: SortOption, viewModel: FileManagerViewModel) {
+    val isSelected = viewModel.sortOption == option
+    FilterChip(
+        selected = isSelected,
+        onClick = { viewModel.toggleSort(option) },
+        label = { Text(label) },
+        trailingIcon = {
+            if (isSelected) {
+                Icon(
+                    if (viewModel.sortDirection == SortDirection.ASC) Icons.Default.ArrowDropUp else Icons.Default.ArrowDropDown,
+                    contentDescription = null
+                )
+            }
+        },
+        modifier = Modifier.padding(horizontal = 2.dp)
+    )
+}
+
 @Composable
 private fun FilePanel(
     modifier: Modifier,
@@ -106,10 +144,10 @@ private fun FilePanel(
 ) {
     Column(modifier = modifier.padding(4.dp)) {
         Text(title, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-        Text(text = path, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(path, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
         HorizontalDivider(Modifier.padding(vertical = 4.dp))
-        IconButton(onClick = onUpClick, modifier = Modifier.size(32.dp).align(Alignment.Start)) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Subir nivel", modifier = Modifier.size(18.dp))
+        IconButton(onClick = onUpClick, modifier = Modifier.size(24.dp)) {
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Subir", modifier = Modifier.size(16.dp))
         }
         LazyColumn(Modifier.fillMaxSize()) {
             items(files) { file ->
