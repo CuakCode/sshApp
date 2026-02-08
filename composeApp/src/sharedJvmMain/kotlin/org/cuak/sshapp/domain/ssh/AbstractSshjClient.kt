@@ -19,9 +19,13 @@ import org.cuak.sshapp.models.PortInfo
 import org.cuak.sshapp.models.ProcessInfo
 import org.cuak.sshapp.models.Server
 import org.cuak.sshapp.models.ServerMetrics
+import org.cuak.sshapp.models.SftpFile
 import java.io.OutputStream
 import java.util.concurrent.TimeUnit
 import kotlin.coroutines.coroutineContext
+import net.schmizz.sshj.sftp.SFTPClient
+import net.schmizz.sshj.sftp.RemoteResourceInfo
+import net.schmizz.sshj.xfer.FileSystemFile
 
 /**
  * Cliente SSH base compartido para JVM y Android.
@@ -360,5 +364,70 @@ abstract class AbstractSshjClient : SshClient {
             }
         }
         return list
+    }
+    override suspend fun listRemoteFiles(server: Server, path: String): Result<List<SftpFile>> = withContext(Dispatchers.IO) {
+        val client = SSHClient()
+        try {
+            onConfigureClient(client)
+            client.connectAndAuthenticate(server)
+            val sftp = client.newSFTPClient()
+            try {
+                val files = sftp.ls(path) ?: emptyList()
+                val sftpFiles = files.map {
+                    SftpFile(
+                        name = it.name,
+                        path = it.path,
+                        isDirectory = it.isDirectory,
+                        size = it.attributes.size,
+                        permissions = it.attributes.permissions.toString()
+                    )
+                }.sortedWith(compareBy({ !it.isDirectory }, { it.name }))
+                Result.success(sftpFiles)
+            } finally {
+                sftp.close()
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        } finally {
+            if (client.isConnected) client.disconnect()
+        }
+    }
+
+    override suspend fun uploadFile(server: Server, localPath: String, remotePath: String): Result<Unit> = withContext(Dispatchers.IO) {
+        val client = SSHClient()
+        try {
+            onConfigureClient(client)
+            client.connectAndAuthenticate(server)
+            val sftp = client.newSFTPClient()
+            try {
+                sftp.put(FileSystemFile(localPath), remotePath)
+                Result.success(Unit)
+            } finally {
+                sftp.close()
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        } finally {
+            if (client.isConnected) client.disconnect()
+        }
+    }
+
+    override suspend fun downloadFile(server: Server, remotePath: String, localPath: String): Result<Unit> = withContext(Dispatchers.IO) {
+        val client = SSHClient()
+        try {
+            onConfigureClient(client)
+            client.connectAndAuthenticate(server)
+            val sftp = client.newSFTPClient()
+            try {
+                sftp.get(remotePath, FileSystemFile(localPath))
+                Result.success(Unit)
+            } finally {
+                sftp.close()
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        } finally {
+            if (client.isConnected) client.disconnect()
+        }
     }
 }

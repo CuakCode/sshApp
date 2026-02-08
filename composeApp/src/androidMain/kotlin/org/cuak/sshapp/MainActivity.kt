@@ -7,6 +7,8 @@ import androidx.activity.enableEdgeToEdge
 import org.cuak.sshapp.database.AndroidDatabaseDriverFactory
 import org.cuak.sshapp.database.DatabaseDriverFactory
 import org.cuak.sshapp.di.initKoin
+import org.cuak.sshapp.domain.files.JvmLocalFileSystem
+import org.cuak.sshapp.domain.files.LocalFileSystem
 import org.cuak.sshapp.domain.ssh.AndroidSshClient
 import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
@@ -22,6 +24,7 @@ class MainActivity : ComponentActivity() {
             platformModules = listOf(module {
                 single<DatabaseDriverFactory> { AndroidDatabaseDriverFactory(androidContext()) }
                 single<SshClient> { AndroidSshClient() }
+                single<LocalFileSystem> { JvmLocalFileSystem() }
             })
         )
 

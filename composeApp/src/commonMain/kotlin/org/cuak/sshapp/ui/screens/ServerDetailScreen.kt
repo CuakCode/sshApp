@@ -13,19 +13,20 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.koin.koinScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import org.cuak.sshapp.models.DeviceType
-import org.cuak.sshapp.models.Server
 import org.cuak.sshapp.models.rtspUrl
 import org.cuak.sshapp.ui.components.RtspVideoPlayer
+import org.cuak.sshapp.ui.screens.tabs.FileManagerTabContent // <--- NUEVO IMPORT
+import org.cuak.sshapp.ui.screens.tabs.FileManagerViewModel
 import org.cuak.sshapp.ui.screens.tabs.MonitorTabContent
 import org.cuak.sshapp.ui.screens.tabs.ProcessesTabContent
 import org.cuak.sshapp.ui.screens.tabs.TerminalTabContent
-
-
+import org.koin.core.parameter.parametersOf
 
 data class ServerDetailScreen(val serverId: Long) : Screen {
 
@@ -43,12 +44,13 @@ data class ServerDetailScreen(val serverId: Long) : Screen {
         // --- 1. LÓGICA DE PESTAÑAS DINÁMICAS ---
         val isCamera = server?.type == DeviceType.CAMERA
 
-        // Si es cámara, insertamos la pestaña "Cámara" al principio (índice 0)
+        // Si es cámara, insertamos "Cámara" al principio.
+        // AÑADIDO: "Archivos" al final de la lista.
         val tabs = remember(isCamera) {
             if (isCamera) {
-                listOf("Cámara", "Monitor", "Procesos", "Terminal")
+                listOf("Cámara", "Monitor", "Procesos", "Terminal", "Archivos")
             } else {
-                listOf("Monitor", "Procesos", "Terminal")
+                listOf("Monitor", "Procesos", "Terminal", "Archivos")
             }
         }
 
@@ -93,7 +95,9 @@ data class ServerDetailScreen(val serverId: Long) : Screen {
                             when (tabs.getOrNull(selectedTabIndex)) {
                                 "Monitor" -> viewModel.fetchMetrics()
                                 "Procesos" -> viewModel.fetchProcesses()
-                                else -> { /* No requiere refresco manual */ }
+                                // FileManager tiene su propio botón de refresco interno (navegación),
+                                // pero podrías conectarlo aquí si quisieras forzar recarga.
+                                else -> { /* No requiere refresco manual global */ }
                             }
                         }) {
                             Icon(Icons.Default.Refresh, "Refrescar")
@@ -104,8 +108,11 @@ data class ServerDetailScreen(val serverId: Long) : Screen {
         ) { padding ->
             Column(modifier = Modifier.padding(padding).fillMaxSize()) {
 
-                // Barra de Pestañas
-                PrimaryTabRow(selectedTabIndex = selectedTabIndex) {
+                // Barra de Pestañas Scrollable para asegurar que caben todas
+                ScrollableTabRow(
+                    selectedTabIndex = selectedTabIndex,
+                    edgePadding = 0.dp // Opcional: ajusta el padding inicial
+                ) {
                     tabs.forEachIndexed { index, title ->
                         Tab(
                             selected = selectedTabIndex == index,
@@ -117,6 +124,7 @@ data class ServerDetailScreen(val serverId: Long) : Screen {
                                     "Monitor" -> Icons.Default.Speed
                                     "Procesos" -> Icons.Default.Memory
                                     "Terminal" -> Icons.Default.Terminal
+                                    "Archivos" -> Icons.Default.Folder // <--- Icono para Archivos
                                     else -> Icons.Default.Circle
                                 }
                                 Icon(icon, null)
@@ -138,12 +146,10 @@ data class ServerDetailScreen(val serverId: Long) : Screen {
                                         .background(Color.Black),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    // --- REPRODUCTOR RTSP ---
                                     RtspVideoPlayer(
                                         url = srv.rtspUrl,
                                         modifier = Modifier.fillMaxSize(),
                                         onStatusChange = { status ->
-                                            // Este callback es obligatorio según la definición expect/actual
                                             println("Estado cámara: $status")
                                         }
                                     )
@@ -173,9 +179,16 @@ data class ServerDetailScreen(val serverId: Long) : Screen {
                                 onStart = { viewModel.startTerminal() }
                             )
                         }
+                        "Archivos" -> { // <--- NUEVO BLOQUE DE CONTENIDO
+                            // Necesitamos que server no sea null para iniciar el cliente SFTP
+                            server?.let { srv ->
+                                val fileManagerViewModel = koinScreenModel<FileManagerViewModel> { parametersOf(srv) }
+                                FileManagerTabContent(viewModel = fileManagerViewModel)
+                            }
+                        }
                     }
                 }
             }
         }
     }
-    }
+}

@@ -9,6 +9,8 @@ import org.cuak.sshapp.ui.screens.ServerDetailViewModel
 import org.cuak.sshapp.network.ConnectivityManager
 import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.module
+import org.cuak.sshapp.ui.screens.tabs.FileManagerViewModel
+import org.cuak.sshapp.models.Server
 
 val commonModule = module {
     // Base de datos
@@ -27,4 +29,12 @@ val commonModule = module {
 
     // ServerDetailViewModel
     factory { ServerDetailViewModel(get(), get()) }
+
+    factory { (server: Server) ->
+        FileManagerViewModel(
+            server = server,
+            sshClient = get(),       // Inyecta SshClient automáticamente
+            localFileSystem = get()  // Inyecta LocalFileSystem automáticamente
+        )
+    }
 }
