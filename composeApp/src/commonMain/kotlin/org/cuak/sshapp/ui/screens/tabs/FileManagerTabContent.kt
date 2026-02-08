@@ -1,4 +1,3 @@
-// composeApp/src/commonMain/kotlin/org/cuak/sshapp/ui/screens/tabs/FileManagerTabContent.kt
 package org.cuak.sshapp.ui.screens.tabs
 
 import androidx.compose.foundation.background
@@ -40,20 +39,7 @@ fun FileManagerTabContent(viewModel: FileManagerViewModel) {
 
     Column(Modifier.fillMaxSize()) {
 
-        // --- Barra de Ordenación ---
-        Row(
-            Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface).padding(4.dp),
-            horizontalArrangement = Arrangement.End,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("Ordenar:", style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(end = 8.dp))
-            SortChip("Nombre", SortOption.NAME, viewModel)
-            SortChip("Tam.", SortOption.SIZE, viewModel)
-            SortChip("Fecha", SortOption.DATE, viewModel)
-        }
-        Divider()
-
-        // --- Barra de Estado y Progreso ---
+        // --- Barra de Estado y Progreso Global ---
         if (transferProgress != null) {
             Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.secondaryContainer).padding(8.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -61,7 +47,7 @@ fun FileManagerTabContent(viewModel: FileManagerViewModel) {
                     Text("${(transferProgress!! * 100).toInt()}%", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                 }
                 Spacer(Modifier.height(4.dp))
-                LinearProgressIndicator(progress = transferProgress!!, modifier = Modifier.fillMaxWidth())
+                LinearProgressIndicator(progress = { transferProgress!! }, modifier = Modifier.fillMaxWidth())
             }
         } else if (isLoading) {
             LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -75,17 +61,21 @@ fun FileManagerTabContent(viewModel: FileManagerViewModel) {
             )
         }
 
-        // --- Paneles ---
+        // --- Paneles de Archivos ---
         Row(Modifier.weight(1f)) {
+            // PANEL LOCAL
             FilePanel(
                 modifier = Modifier.weight(1f),
                 title = "Local",
                 path = localPath,
                 files = localFiles,
+                sortOption = viewModel.localSortOption,       // Pasamos estado local
+                sortDirection = viewModel.localSortDirection,
+                onSortChange = { viewModel.toggleLocalSort(it) },
                 onUpClick = { viewModel.navigateLocalUp() },
                 onItemClick = {
                     if (it.isDirectory) viewModel.navigateLocal(it.path)
-                    else viewModel.openLocalFile(it) // Abrir archivo
+                    else viewModel.openLocalFile(it)
                 },
                 onTransferClick = { viewModel.upload(it) },
                 transferIcon = Icons.AutoMirrored.Filled.ArrowForward
@@ -93,11 +83,15 @@ fun FileManagerTabContent(viewModel: FileManagerViewModel) {
 
             VerticalDivider(modifier = Modifier.fillMaxHeight())
 
+            // PANEL REMOTO
             FilePanel(
                 modifier = Modifier.weight(1f),
                 title = "Remoto",
                 path = remotePath,
                 files = remoteFiles,
+                sortOption = viewModel.remoteSortOption,      // Pasamos estado remoto
+                sortDirection = viewModel.remoteSortDirection,
+                onSortChange = { viewModel.toggleRemoteSort(it) },
                 onUpClick = { viewModel.navigateRemoteUp() },
                 onItemClick = {
                     if (it.isDirectory) {
@@ -113,48 +107,91 @@ fun FileManagerTabContent(viewModel: FileManagerViewModel) {
 }
 
 @Composable
-fun SortChip(label: String, option: SortOption, viewModel: FileManagerViewModel) {
-    val isSelected = viewModel.sortOption == option
-    FilterChip(
-        selected = isSelected,
-        onClick = { viewModel.toggleSort(option) },
-        label = { Text(label) },
-        trailingIcon = {
-            if (isSelected) {
-                Icon(
-                    if (viewModel.sortDirection == SortDirection.ASC) Icons.Default.ArrowDropUp else Icons.Default.ArrowDropDown,
-                    contentDescription = null
-                )
-            }
-        },
-        modifier = Modifier.padding(horizontal = 2.dp)
-    )
-}
-
-@Composable
 private fun FilePanel(
     modifier: Modifier,
     title: String,
     path: String,
     files: List<SftpFile>,
+    sortOption: SortOption,
+    sortDirection: SortDirection,
+    onSortChange: (SortOption) -> Unit,
     onUpClick: () -> Unit,
     onItemClick: (SftpFile) -> Unit,
     onTransferClick: (SftpFile) -> Unit,
     transferIcon: ImageVector
 ) {
     Column(modifier = modifier.padding(4.dp)) {
-        Text(title, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-        Text(path, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        HorizontalDivider(Modifier.padding(vertical = 4.dp))
-        IconButton(onClick = onUpClick, modifier = Modifier.size(24.dp)) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Subir", modifier = Modifier.size(16.dp))
+        // Cabecera: Título y Ruta
+        Column(Modifier.padding(horizontal = 4.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(title, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.weight(1f))
+                IconButton(onClick = onUpClick, modifier = Modifier.size(24.dp)) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, "Subir", modifier = Modifier.size(16.dp))
+                }
+            }
+            Text(path, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis, color = Color.Gray)
         }
+
+        Spacer(Modifier.height(4.dp))
+
+        // --- Botones de Ordenación Integrados y Centrados ---
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            SortChip("Nombre", SortOption.NAME, sortOption, sortDirection, onSortChange)
+            Spacer(Modifier.width(4.dp))
+            SortChip("Tam.", SortOption.SIZE, sortOption, sortDirection, onSortChange)
+            Spacer(Modifier.width(4.dp))
+            SortChip("Fecha", SortOption.DATE, sortOption, sortDirection, onSortChange)
+        }
+
+        HorizontalDivider(Modifier.padding(top = 8.dp))
+
+        // Lista de Archivos
         LazyColumn(Modifier.fillMaxSize()) {
             items(files) { file ->
                 FileItemRow(file, { onItemClick(file) }, { onTransferClick(file) }, transferIcon)
             }
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SortChip(
+    label: String,
+    option: SortOption,
+    currentOption: SortOption,
+    currentDirection: SortDirection,
+    onSortChange: (SortOption) -> Unit
+) {
+    val isSelected = currentOption == option
+
+    FilterChip(
+        selected = isSelected,
+        onClick = { onSortChange(option) },
+        label = { Text(label, style = MaterialTheme.typography.labelSmall) },
+        trailingIcon = {
+            if (isSelected) {
+                Icon(
+                    if (currentDirection == SortDirection.ASC) Icons.Default.ArrowDropUp else Icons.Default.ArrowDropDown,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        },
+        modifier = Modifier.height(32.dp),
+        enabled = true, // Solución error: parámetro 'enabled' explícito
+        colors = FilterChipDefaults.filterChipColors(
+            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+        ),
+        // Solución error: Para quitar el borde, pasamos null directamente.
+        // Evitamos llamar a FilterChipDefaults.filterChipBorder(...) que pide parámetros obligatorios.
+        border = null
+    )
 }
 
 @Composable
