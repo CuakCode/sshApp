@@ -10,8 +10,11 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.ArrowDropUp
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.SdStorage
+import androidx.compose.material.icons.filled.SortByAlpha
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -40,14 +43,15 @@ fun FileManagerTabContent(viewModel: FileManagerViewModel) {
     Column(Modifier.fillMaxSize()) {
 
         // --- Barra de Estado y Progreso Global ---
-        if (transferProgress != null) {
+        val currentProgress = transferProgress // Captura segura para evitar NPE
+        if (currentProgress != null) {
             Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.secondaryContainer).padding(8.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text("Transfiriendo...", style = MaterialTheme.typography.labelSmall)
-                    Text("${(transferProgress!! * 100).toInt()}%", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                    Text("${(currentProgress * 100).toInt()}%", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                 }
                 Spacer(Modifier.height(4.dp))
-                LinearProgressIndicator(progress = { transferProgress!! }, modifier = Modifier.fillMaxWidth())
+                LinearProgressIndicator(progress = { currentProgress }, modifier = Modifier.fillMaxWidth())
             }
         } else if (isLoading) {
             LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -69,7 +73,7 @@ fun FileManagerTabContent(viewModel: FileManagerViewModel) {
                 title = "Local",
                 path = localPath,
                 files = localFiles,
-                sortOption = viewModel.localSortOption,       // Pasamos estado local
+                sortOption = viewModel.localSortOption,
                 sortDirection = viewModel.localSortDirection,
                 onSortChange = { viewModel.toggleLocalSort(it) },
                 onUpClick = { viewModel.navigateLocalUp() },
@@ -89,16 +93,16 @@ fun FileManagerTabContent(viewModel: FileManagerViewModel) {
                 title = "Remoto",
                 path = remotePath,
                 files = remoteFiles,
-                sortOption = viewModel.remoteSortOption,      // Pasamos estado remoto
+                sortOption = viewModel.remoteSortOption,
                 sortDirection = viewModel.remoteSortDirection,
                 onSortChange = { viewModel.toggleRemoteSort(it) },
                 onUpClick = { viewModel.navigateRemoteUp() },
-                onItemClick = {
-                    if (it.isDirectory) {
-                        val separator = if (remotePath.endsWith("/")) "" else "/"
-                        viewModel.navigateRemote("$remotePath$separator${it.name}")
-                    }
+
+                // CAMBIO AQUÍ: Usamos la nueva función openRemoteFile
+                onItemClick = { file ->
+                    viewModel.openRemoteFile(file)
                 },
+
                 onTransferClick = { viewModel.download(it) },
                 transferIcon = Icons.AutoMirrored.Filled.ArrowBack
             )
@@ -135,16 +139,46 @@ private fun FilePanel(
 
         Spacer(Modifier.height(4.dp))
 
-        // --- Botones de Ordenación Integrados y Centrados ---
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center
-        ) {
-            SortChip("Nombre", SortOption.NAME, sortOption, sortDirection, onSortChange)
-            Spacer(Modifier.width(4.dp))
-            SortChip("Tam.", SortOption.SIZE, sortOption, sortDirection, onSortChange)
-            Spacer(Modifier.width(4.dp))
-            SortChip("Fecha", SortOption.DATE, sortOption, sortDirection, onSortChange)
+        // --- Botones de Ordenación Responsivos ---
+        // Usamos BoxWithConstraints para saber el ancho real disponible de este panel
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            // Si el ancho del panel es menor a 280dp, usamos modo compacto (iconos)
+            val isCompact = maxWidth < 280.dp
+
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                SortChip(
+                    label = "Nombre",
+                    icon = Icons.Default.SortByAlpha,
+                    option = SortOption.NAME,
+                    currentOption = sortOption,
+                    currentDirection = sortDirection,
+                    isCompact = isCompact,
+                    onSortChange = onSortChange
+                )
+                Spacer(Modifier.width(4.dp))
+                SortChip(
+                    label = "Tam.",
+                    icon = Icons.Default.SdStorage,
+                    option = SortOption.SIZE,
+                    currentOption = sortOption,
+                    currentDirection = sortDirection,
+                    isCompact = isCompact,
+                    onSortChange = onSortChange
+                )
+                Spacer(Modifier.width(4.dp))
+                SortChip(
+                    label = "Fecha",
+                    icon = Icons.Default.DateRange,
+                    option = SortOption.DATE,
+                    currentOption = sortOption,
+                    currentDirection = sortDirection,
+                    isCompact = isCompact,
+                    onSortChange = onSortChange
+                )
+            }
         }
 
         HorizontalDivider(Modifier.padding(top = 8.dp))
@@ -162,9 +196,11 @@ private fun FilePanel(
 @Composable
 fun SortChip(
     label: String,
+    icon: ImageVector,
     option: SortOption,
     currentOption: SortOption,
     currentDirection: SortDirection,
+    isCompact: Boolean,
     onSortChange: (SortOption) -> Unit
 ) {
     val isSelected = currentOption == option
@@ -172,7 +208,19 @@ fun SortChip(
     FilterChip(
         selected = isSelected,
         onClick = { onSortChange(option) },
-        label = { Text(label, style = MaterialTheme.typography.labelSmall) },
+        label = {
+            if (isCompact) {
+                // Modo Compacto: Solo Icono de categoría
+                Icon(
+                    imageVector = icon,
+                    contentDescription = label,
+                    modifier = Modifier.size(16.dp)
+                )
+            } else {
+                // Modo Normal: Texto
+                Text(label, style = MaterialTheme.typography.labelSmall)
+            }
+        },
         trailingIcon = {
             if (isSelected) {
                 Icon(
@@ -183,13 +231,11 @@ fun SortChip(
             }
         },
         modifier = Modifier.height(32.dp),
-        enabled = true, // Solución error: parámetro 'enabled' explícito
+        enabled = true,
         colors = FilterChipDefaults.filterChipColors(
             selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
             selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
         ),
-        // Solución error: Para quitar el borde, pasamos null directamente.
-        // Evitamos llamar a FilterChipDefaults.filterChipBorder(...) que pide parámetros obligatorios.
         border = null
     )
 }

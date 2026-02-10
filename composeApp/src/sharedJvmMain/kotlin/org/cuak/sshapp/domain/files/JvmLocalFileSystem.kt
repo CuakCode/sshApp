@@ -37,4 +37,24 @@ class JvmLocalFileSystem : LocalFileSystem {
             e.printStackTrace()
         }
     }
+
+    private val TEMP_FOLDER_NAME = "sshApp_temp"
+
+    override fun getTempFilePath(fileName: String): String {
+        val tempRoot = System.getProperty("java.io.tmpdir")
+        val appTempDir = File(tempRoot, TEMP_FOLDER_NAME)
+
+        if (!appTempDir.exists()) appTempDir.mkdirs()
+
+        return File(appTempDir, fileName).absolutePath
+    }
+
+    override fun clearTempFiles() {
+        val tempRoot = System.getProperty("java.io.tmpdir")
+        val appTempDir = File(tempRoot, TEMP_FOLDER_NAME)
+
+        if (appTempDir.exists()) {
+            appTempDir.deleteRecursively()
+        }
+    }
 }

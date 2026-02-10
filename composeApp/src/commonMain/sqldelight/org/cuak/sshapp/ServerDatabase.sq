@@ -1,7 +1,6 @@
 import kotlin.Int;
 import org.cuak.sshapp.models.DeviceType;
 
--- Tabla para almacenar los servidores
 CREATE TABLE ServerEntity (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -17,7 +16,7 @@ CREATE TABLE ServerEntity (
     camera_stream TEXT DEFAULT "ch0_0.h264"
 );
 
--- Tabla para almacenar el historial de métricas (opcional, pero útil)
+
 CREATE TABLE MetricHistory (
     id INTEGER PRIMARY KEY AUTOINCREMENT, -- Quita el 'NOT NULL' aquí
     serverId INTEGER NOT NULL,
@@ -29,7 +28,6 @@ CREATE TABLE MetricHistory (
     FOREIGN KEY (serverId) REFERENCES ServerEntity(id) ON DELETE CASCADE
 );
 
--- CONSULTAS PARA SERVIDORES
 
 insertServer:
 INSERT INTO ServerEntity(name, ip, port, username, password, sshKeyPath, iconName, type, camera_protocol, camera_port, camera_stream)

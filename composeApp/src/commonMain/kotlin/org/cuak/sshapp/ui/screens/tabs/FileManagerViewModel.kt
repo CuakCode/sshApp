@@ -57,6 +57,7 @@ class FileManagerViewModel(
     val transferProgress: StateFlow<Float?> = _transferProgress.asStateFlow()
 
     init {
+        localFileSystem.clearTempFiles()
         refreshLocal()
         refreshRemote()
     }
@@ -199,5 +200,49 @@ class FileManagerViewModel(
             _transferProgress.value = null
             _isLoading.value = false
         }
+    }
+
+    fun openRemoteFile(file: SftpFile) {
+        if (file.isDirectory) {
+            // Si es carpeta, navegamos (lógica existente movida aquí)
+            val separator = if (_remotePath.value.endsWith("/")) "" else "/"
+            navigateRemote("${_remotePath.value}$separator${file.name}")
+        } else {
+            // Si es archivo, iniciamos la "apertura remota" (Descarga temporal + Abrir)
+            screenModelScope.launch {
+                _isLoading.value = true
+                _statusMessage.value = "Abriendo ${file.name}..."
+
+                // 1. Definir ruta temporal
+                val tempPath = localFileSystem.getTempFilePath(file.name)
+
+                // 2. Descargar (Reutilizamos lógica de SSH pero a ruta temporal)
+                sshClient.downloadFile(server, file.path, tempPath) { progress ->
+                    // Opcional: Mostrar progreso, aunque sea rápido
+                    _transferProgress.value = progress
+                }
+                    .onSuccess {
+                        _statusMessage.value = "Abriendo..."
+                        _transferProgress.value = null
+
+                        // 3. Abrir el archivo localmente
+                        try {
+                            localFileSystem.openFile(tempPath)
+                        } catch (e: Exception) {
+                            _statusMessage.value = "Error al abrir: ${e.message}"
+                        }
+                    }
+                    .onFailure {
+                        _statusMessage.value = "Error al descargar: ${it.message}"
+                    }
+
+                _isLoading.value = false
+                _transferProgress.value = null
+            }
+        }
+    }
+    override fun onDispose() {
+        super.onDispose()
+        localFileSystem.clearTempFiles()
     }
 }
