@@ -15,7 +15,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.koin.koinScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
@@ -24,10 +23,11 @@ import org.cuak.sshapp.models.DeviceType
 import org.cuak.sshapp.models.rtspUrl
 import org.cuak.sshapp.ui.components.RtspVideoPlayer
 import org.cuak.sshapp.ui.screens.tabs.FileManagerTabContent
-import org.cuak.sshapp.ui.screens.tabs.FileManagerViewModel
+import org.cuak.sshapp.ui.screens.viewModels.FileManagerViewModel
 import org.cuak.sshapp.ui.screens.tabs.MonitorTabContent
 import org.cuak.sshapp.ui.screens.tabs.ProcessesTabContent
 import org.cuak.sshapp.ui.screens.tabs.TerminalTabContent
+import org.cuak.sshapp.ui.screens.viewModels.ServerDetailViewModel
 import org.koin.core.parameter.parametersOf
 
 data class ServerDetailScreen(val serverId: Long) : Screen {

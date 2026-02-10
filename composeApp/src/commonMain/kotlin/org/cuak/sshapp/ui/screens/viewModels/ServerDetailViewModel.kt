@@ -1,4 +1,4 @@
-package org.cuak.sshapp.ui.screens
+package org.cuak.sshapp.ui.screens.viewModels
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf

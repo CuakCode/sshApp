@@ -3,13 +3,13 @@ package org.cuak.sshapp.di
 import org.cuak.sshapp.ServerDatabase
 import org.cuak.sshapp.database.createDatabase
 import org.cuak.sshapp.repository.ServerRepository
-import org.cuak.sshapp.ui.screens.HomeViewModel
-import org.cuak.sshapp.ui.screens.ServerDetailViewModel
+import org.cuak.sshapp.ui.screens.viewModels.HomeViewModel
+import org.cuak.sshapp.ui.screens.viewModels.ServerDetailViewModel
 // IMPORTANTE: Asegúrate de importar tu ConnectivityManager
 import org.cuak.sshapp.network.ConnectivityManager
 import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.module
-import org.cuak.sshapp.ui.screens.tabs.FileManagerViewModel
+import org.cuak.sshapp.ui.screens.viewModels.FileManagerViewModel
 import org.cuak.sshapp.models.Server
 
 val commonModule = module {

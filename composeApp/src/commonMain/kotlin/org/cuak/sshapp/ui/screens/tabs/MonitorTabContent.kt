@@ -20,7 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.cuak.sshapp.models.PortInfo
 import org.cuak.sshapp.ui.components.ResourceGauge
-import org.cuak.sshapp.ui.screens.DetailUiState
+import org.cuak.sshapp.ui.screens.viewModels.DetailUiState
 import org.cuak.sshapp.ui.theme.StatusError
 import org.cuak.sshapp.ui.theme.StatusSuccess
 import org.cuak.sshapp.ui.theme.StatusWarning

@@ -25,9 +25,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import org.cuak.sshapp.models.SftpFile
-import org.cuak.sshapp.ui.screens.tabs.FileManagerViewModel
-import org.cuak.sshapp.ui.screens.tabs.SortDirection
-import org.cuak.sshapp.ui.screens.tabs.SortOption
+import org.cuak.sshapp.ui.screens.viewModels.FileManagerViewModel
+import org.cuak.sshapp.ui.screens.viewModels.SortDirection
+import org.cuak.sshapp.ui.screens.viewModels.SortOption
 
 @Composable
 fun FileManagerTabContent(viewModel: FileManagerViewModel) {

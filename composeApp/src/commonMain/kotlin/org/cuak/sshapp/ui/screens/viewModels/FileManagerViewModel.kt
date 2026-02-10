@@ -1,5 +1,5 @@
 // composeApp/src/commonMain/kotlin/org/cuak/sshapp/ui/screens/filemanager/FileManagerViewModel.kt
-package org.cuak.sshapp.ui.screens.tabs
+package org.cuak.sshapp.ui.screens.viewModels
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf

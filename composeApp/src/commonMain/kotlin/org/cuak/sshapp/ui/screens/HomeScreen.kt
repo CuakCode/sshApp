@@ -19,6 +19,7 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import org.cuak.sshapp.models.Server
 import org.cuak.sshapp.ui.components.ServerCard
+import org.cuak.sshapp.ui.screens.viewModels.HomeViewModel
 
 class HomeScreen : Screen {
 

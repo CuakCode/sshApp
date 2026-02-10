@@ -1,4 +1,4 @@
-package org.cuak.sshapp.ui.screens
+package org.cuak.sshapp.ui.screens.viewModels
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -18,7 +18,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import org.cuak.sshapp.models.DeviceType
 import org.cuak.sshapp.models.Server
 import org.cuak.sshapp.models.ServerStatus
 import org.cuak.sshapp.network.ConnectivityManager
