@@ -65,7 +65,6 @@ kotlin {
                 implementation(libs.voyager.transitions)
                 implementation(libs.filekit.core)
                 implementation(libs.filekit.compose)
-                implementation(libs.multiplatform.settings.core)
                 implementation(libs.multiplatform.settings.noarg)
             }
         }
