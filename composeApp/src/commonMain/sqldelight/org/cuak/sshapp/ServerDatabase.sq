@@ -1,6 +1,6 @@
 import kotlin.Int;
-import org.cuak.sshapp.models.DeviceType;
 
+-- 1. Entidad Principal
 CREATE TABLE ServerEntity (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -9,16 +9,21 @@ CREATE TABLE ServerEntity (
     username TEXT NOT NULL,
     password TEXT,
     sshKeyPath TEXT,
-    iconName TEXT NOT NULL DEFAULT 'dns',
-    type TEXT AS DeviceType NOT NULL DEFAULT 'SERVER',
-    camera_protocol TEXT DEFAULT "RTSP",
-    camera_port INTEGER AS Int DEFAULT 8554,
-    camera_stream TEXT DEFAULT "ch0_0.h264"
+    iconName TEXT NOT NULL DEFAULT 'dns'
 );
 
+-- 2. Entidad Débil (Cámara) que depende del Servidor
+CREATE TABLE CameraEntity (
+    serverId INTEGER PRIMARY KEY NOT NULL,
+    camera_protocol TEXT DEFAULT 'RTSP',
+    camera_port INTEGER AS Int DEFAULT 8554,
+    camera_stream TEXT DEFAULT 'ch0_0.h264',
+    FOREIGN KEY (serverId) REFERENCES ServerEntity(id) ON DELETE CASCADE
+);
 
+-- 3. Entidad de Métricas
 CREATE TABLE MetricHistory (
-    id INTEGER PRIMARY KEY AUTOINCREMENT, -- Quita el 'NOT NULL' aquí
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
     serverId INTEGER NOT NULL,
     cpuUsage REAL NOT NULL,
     ramUsage REAL NOT NULL,
@@ -28,26 +33,62 @@ CREATE TABLE MetricHistory (
     FOREIGN KEY (serverId) REFERENCES ServerEntity(id) ON DELETE CASCADE
 );
 
+-- ==========================================
+-- CONSULTAS PARA SERVIDORES (BASE)
+-- ==========================================
 
 insertServer:
-INSERT INTO ServerEntity(name, ip, port, username, password, sshKeyPath, iconName, type, camera_protocol, camera_port, camera_stream)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+INSERT INTO ServerEntity(name, ip, port, username, password, sshKeyPath, iconName)
+VALUES (?, ?, ?, ?, ?, ?, ?);
 
 updateServer:
 UPDATE ServerEntity
-SET name = ?, ip = ?, port = ?, username = ?, password = ?, sshKeyPath = ?, iconName = ?, type = ?, camera_protocol = ?, camera_port = ?, camera_stream = ?
+SET name = ?, ip = ?, port = ?, username = ?, password = ?, sshKeyPath = ?, iconName = ?
 WHERE id = ?;
 
 deleteServer:
 DELETE FROM ServerEntity WHERE id = ?;
 
-selectAllServers:
-SELECT * FROM ServerEntity;
+-- Utilidad para obtener el ID recién insertado (Útil para insertar la cámara justo después)
+lastInsertRowId:
+SELECT last_insert_rowid();
 
-selectServerById:
-SELECT * FROM ServerEntity WHERE id = ?;
 
+-- ==========================================
+-- CONSULTAS PARA CÁMARAS
+-- ==========================================
+
+insertCamera:
+INSERT INTO CameraEntity(serverId, camera_protocol, camera_port, camera_stream)
+VALUES (?, ?, ?, ?);
+
+updateCamera:
+UPDATE CameraEntity
+SET camera_protocol = ?, camera_port = ?, camera_stream = ?
+WHERE serverId = ?;
+
+
+-- ==========================================
+-- OBTENCIÓN DE DISPOSITIVOS (JOIN)
+-- ==========================================
+
+-- Ahora devolvemos la unión de ambas tablas.
+-- Si camera_protocol es NULL, entonces el dispositivo es un SERVER normal.
+selectAllDevices:
+SELECT ServerEntity.*, CameraEntity.camera_protocol, CameraEntity.camera_port, CameraEntity.camera_stream
+FROM ServerEntity
+LEFT JOIN CameraEntity ON ServerEntity.id = CameraEntity.serverId;
+
+selectDeviceById:
+SELECT ServerEntity.*, CameraEntity.camera_protocol, CameraEntity.camera_port, CameraEntity.camera_stream
+FROM ServerEntity
+LEFT JOIN CameraEntity ON ServerEntity.id = CameraEntity.serverId
+WHERE ServerEntity.id = ?;
+
+
+-- ==========================================
 -- CONSULTAS PARA MÉTRICAS
+-- ==========================================
 
 insertMetric:
 INSERT INTO MetricHistory(serverId, cpuUsage, ramUsage, diskUsage, temperature, timestamp)

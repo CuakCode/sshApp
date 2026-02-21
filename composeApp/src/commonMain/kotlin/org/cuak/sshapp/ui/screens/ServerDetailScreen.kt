@@ -19,8 +19,8 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.koin.koinScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
-import org.cuak.sshapp.models.DeviceType
-import org.cuak.sshapp.models.rtspUrl
+import org.cuak.sshapp.models.Device
+import org.cuak.sshapp.models.Camera
 import org.cuak.sshapp.ui.components.RtspVideoPlayer
 import org.cuak.sshapp.ui.screens.tabs.FileManagerTabContent
 import org.cuak.sshapp.ui.screens.viewModels.FileManagerViewModel
@@ -38,13 +38,13 @@ data class ServerDetailScreen(val serverId: Long) : Screen {
         val navigator = LocalNavigator.currentOrThrow
         val viewModel = koinScreenModel<ServerDetailViewModel>()
 
-        // Carga inicial del servidor
         LaunchedEffect(serverId) { viewModel.loadServer(serverId) }
 
-        val server = viewModel.server
+        val device = viewModel.device
 
         // --- 1. LÓGICA DE PESTAÑAS DINÁMICAS ---
-        val isCamera = server?.type == DeviceType.CAMERA
+        // Comprobamos directamente si la clase de 'device' es una 'Camera'
+        val isCamera = device is Camera
 
         val tabs = remember(isCamera) {
             if (isCamera) {
@@ -57,12 +57,11 @@ data class ServerDetailScreen(val serverId: Long) : Screen {
         var selectedTabIndex by remember { mutableStateOf(0) }
         var showShutdownDialog by remember { mutableStateOf(false) }
 
-        // Diálogo de confirmación de apagado
         if (showShutdownDialog) {
             AlertDialog(
                 onDismissRequest = { showShutdownDialog = false },
                 icon = { Icon(Icons.Default.Warning, null) },
-                title = { Text("¿Apagar Servidor?") },
+                title = { Text("¿Apagar Dispositivo?") },
                 text = { Text("Se ejecutará 'sudo poweroff'.") },
                 confirmButton = {
                     TextButton(
@@ -79,8 +78,8 @@ data class ServerDetailScreen(val serverId: Long) : Screen {
                 TopAppBar(
                     title = {
                         Column {
-                            Text(server?.name ?: "Cargando...", style = MaterialTheme.typography.titleMedium)
-                            server?.let { Text(it.ip, style = MaterialTheme.typography.bodySmall) }
+                            Text(device?.name ?: "Cargando...", style = MaterialTheme.typography.titleMedium)
+                            device?.let { Text(it.ip, style = MaterialTheme.typography.bodySmall) }
                         }
                     },
                     navigationIcon = {
@@ -91,11 +90,10 @@ data class ServerDetailScreen(val serverId: Long) : Screen {
                             Icon(Icons.Default.PowerSettingsNew, "Apagar", tint = MaterialTheme.colorScheme.error)
                         }
                         IconButton(onClick = {
-                            // Refrescar según la pestaña activa
                             when (tabs.getOrNull(selectedTabIndex)) {
                                 "Monitor" -> viewModel.fetchMetrics()
                                 "Procesos" -> viewModel.fetchProcesses()
-                                else -> { /* Archivos y Terminal gestionan su propio refresco */ }
+                                else -> { }
                             }
                         }) {
                             Icon(Icons.Default.Refresh, "Refrescar")
@@ -106,8 +104,6 @@ data class ServerDetailScreen(val serverId: Long) : Screen {
         ) { padding ->
             Column(modifier = Modifier.padding(padding).fillMaxSize()) {
 
-                // --- BARRA DE PESTAÑAS ---
-                // Usamos TabRow en lugar de ScrollableTabRow para que ocupe todo el ancho
                 if (tabs.isNotEmpty()) {
                     TabRow(
                         selectedTabIndex = selectedTabIndex,
@@ -119,10 +115,7 @@ data class ServerDetailScreen(val serverId: Long) : Screen {
                             Tab(
                                 selected = selectedTabIndex == index,
                                 onClick = { selectedTabIndex = index },
-                                text = {
-                                    // Texto acortado si es necesario
-                                    Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                },
+                                text = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                                 icon = {
                                     val icon = when (title) {
                                         "Cámara" -> Icons.Default.Videocam
@@ -139,13 +132,14 @@ data class ServerDetailScreen(val serverId: Long) : Screen {
                     }
                 }
 
-                // --- CONTENIDO DE LAS PESTAÑAS ---
                 Box(modifier = Modifier.fillMaxSize()) {
                     val currentTabTitle = tabs.getOrNull(selectedTabIndex)
 
                     when (currentTabTitle) {
                         "Cámara" -> {
-                            server?.let { srv ->
+                            // Smart cast maravilloso de Kotlin: como ya sabemos que debe ser una Camera, lo casteamos.
+                            // Si device es nulo o no es Camera, simplemente no pinta el reproductor.
+                            (device as? Camera)?.let { cam ->
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
@@ -153,7 +147,7 @@ data class ServerDetailScreen(val serverId: Long) : Screen {
                                     contentAlignment = Alignment.Center
                                 ) {
                                     RtspVideoPlayer(
-                                        url = srv.rtspUrl,
+                                        url = cam.rtspUrl, // Acceso directo a rtspUrl gracias al cast
                                         modifier = Modifier.fillMaxSize(),
                                         onStatusChange = { status ->
                                             println("Estado cámara: $status")
@@ -186,9 +180,9 @@ data class ServerDetailScreen(val serverId: Long) : Screen {
                             )
                         }
                         "Archivos" -> {
-                            // Inyección correcta con Koin pasando parámetros
-                            if (server != null) {
-                                val fileManagerViewModel = koinScreenModel<FileManagerViewModel> { parametersOf(server) }
+                            if (device != null) {
+                                // NOTA: Asegúrate de que FileManagerViewModel acepta 'Device' en parametersOf
+                                val fileManagerViewModel = koinScreenModel<FileManagerViewModel> { parametersOf(device) }
                                 FileManagerTabContent(viewModel = fileManagerViewModel)
                             } else {
                                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

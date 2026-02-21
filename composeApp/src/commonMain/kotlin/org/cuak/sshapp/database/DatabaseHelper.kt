@@ -2,10 +2,9 @@ package org.cuak.sshapp.database
 
 import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.ColumnAdapter
+import org.cuak.sshapp.CameraEntity
 import org.cuak.sshapp.ServerDatabase
 import org.cuak.sshapp.ServerEntity
-import org.cuak.sshapp.models.DeviceType
-import org.cuak.sshapp.repository.ServerRepository
 
 interface DatabaseDriverFactory {
     fun createDriver(): SqlDriver
@@ -21,26 +20,14 @@ fun createDatabase(factory: DatabaseDriverFactory): ServerDatabase {
         override fun encode(value: Int): Long = value.toLong()
     }
 
-    // Adaptador para convertir String (SQL) a Enum (Kotlin)
-    val deviceTypeAdapter = object : ColumnAdapter<DeviceType, String> {
-        override fun decode(databaseValue: String): DeviceType {
-            return try {
-                DeviceType.valueOf(databaseValue)
-            } catch (e: Exception) {
-                DeviceType.SERVER
-            }
-        }
-
-        override fun encode(value: DeviceType): String {
-            return value.name
-        }
-    }
-
     return ServerDatabase(
         driver = driver,
+        // Adaptador para la tabla principal
         ServerEntityAdapter = ServerEntity.Adapter(
-            portAdapter = intToLongAdapter,
-            typeAdapter = deviceTypeAdapter,
+            portAdapter = intToLongAdapter
+        ),
+        // Adaptador para la tabla débil (Cámara)
+        CameraEntityAdapter = CameraEntity.Adapter(
             camera_portAdapter = intToLongAdapter
         )
     )

@@ -6,15 +6,17 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import org.cuak.sshapp.ServerDatabase
+import org.cuak.sshapp.models.Device
 import org.cuak.sshapp.models.Server
+import org.cuak.sshapp.models.Camera
 import org.cuak.sshapp.models.ServerStatus
 
-class ServerRepository(database: ServerDatabase) {
+class ServerRepository(private val database: ServerDatabase) {
     private val queries = database.serverDatabaseQueries
 
-    // Obtener todos los servidores como un Flow constante
-    fun getAllServers(): Flow<List<Server>> {
-        return queries.selectAllServers()
+    // Obtenemos un Flow de 'Device' (que por debajo serán instancias de Server o Camera)
+    fun getAllServers(): Flow<List<Device>> {
+        return queries.selectAllDevices()
             .asFlow()
             .mapToList(Dispatchers.Default)
             .map { entities ->
@@ -22,62 +24,130 @@ class ServerRepository(database: ServerDatabase) {
             }
     }
 
-    fun addServer(server: Server) {
-        queries.insertServer(
-            name = server.name,
-            ip = server.ip,
-            port = server.port,
-            username = server.username,
-            password = server.password,
-            sshKeyPath = server.sshKeyPath,
-            iconName = server.iconName,
-            type = server.type,
-            camera_protocol = server.cameraProtocol,
-            camera_port = server.cameraPort,
-            camera_stream = server.cameraStream
-        )
+    fun addServer(device: Device) {
+        database.transaction {
+            // 1. Siempre insertamos los datos base en ServerEntity
+            queries.insertServer(
+                name = device.name,
+                ip = device.ip,
+                port = device.port,
+                username = device.username,
+                password = device.password,
+                sshKeyPath = device.sshKeyPath,
+                iconName = device.iconName
+            )
+
+            // 2. Si el dispositivo es una Cámara, insertamos sus datos específicos
+            if (device is Camera) {
+                val newId = queries.lastInsertRowId().executeAsOne()
+                queries.insertCamera(
+                    serverId = newId,
+                    camera_protocol = device.cameraProtocol,
+                    camera_port = device.cameraPort,
+                    camera_stream = device.cameraStream
+                )
+            }
+        }
     }
 
-    // ServerRepository.kt
-    // Modifica esta función en ServerRepository.kt para persistir cambios correctamente
-    fun updateServer(server: Server) {
-        queries.updateServer(
-            name = server.name,
-            ip = server.ip,
-            port = server.port,
-            username = server.username,
-            password = server.password,
-            sshKeyPath = server.sshKeyPath,
-            iconName = server.iconName,
-            type = server.type,
-            camera_protocol = server.cameraProtocol,
-            camera_port = server.cameraPort,
-            camera_stream = server.cameraStream,
-            id = server.id
-        )
+    fun updateServer(device: Device) {
+        database.transaction {
+            // 1. Actualizamos los datos base en ServerEntity
+            queries.updateServer(
+                name = device.name,
+                ip = device.ip,
+                port = device.port,
+                username = device.username,
+                password = device.password,
+                sshKeyPath = device.sshKeyPath,
+                iconName = device.iconName,
+                id = device.id
+            )
+
+            // 2. Si es una cámara, actualizamos CameraEntity
+            if (device is Camera) {
+                queries.updateCamera(
+                    camera_protocol = device.cameraProtocol,
+                    camera_port = device.cameraPort,
+                    camera_stream = device.cameraStream,
+                    serverId = device.id
+                )
+            }
+        }
     }
 
     fun deleteServer(id: Long) {
+        // Al eliminar el Servidor, el ON DELETE CASCADE elimina la Cámara asociada si existe
         queries.deleteServer(id)
     }
 
-// Mapper de DB a Dominio
-    private fun org.cuak.sshapp.ServerEntity.toDomain() = Server(
-        id = id,
-        name = name,
-        ip = ip,
-        port = port,
-        username = username,
-        password = password,
-        sshKeyPath = sshKeyPath,
-        iconName = iconName,
-        type = type,
-        status = ServerStatus.UNKNOWN,
-        cameraProtocol = camera_protocol,
-        cameraPort = camera_port,
-        cameraStream = camera_stream
-    )
-    suspend fun getServerById(id: Long): Server? {
-        return queries.selectServerById(id).executeAsOneOrNull()?.toDomain()
+    suspend fun getServerById(id: Long): Device? {
+        return queries.selectDeviceById(id).executeAsOneOrNull()?.toDomain()
+    }
+
+    // ==========================================
+    // MAPPERS: Transforman de SQL (LEFT JOIN) a Kotlin
+    // ==========================================
+
+    private fun org.cuak.sshapp.SelectAllDevices.toDomain(): Device {
+        return if (camera_protocol != null) {
+            Camera(
+                id = id,
+                name = name,
+                ip = ip,
+                port = port,
+                username = username,
+                password = password,
+                sshKeyPath = sshKeyPath,
+                iconName = iconName,
+                status = ServerStatus.UNKNOWN,
+                cameraProtocol = camera_protocol,
+                cameraPort = camera_port ?: 8554, // Proporcionamos fallback seguro
+                cameraStream = camera_stream ?: "ch0_0.h264"
+            )
+        } else {
+            Server(
+                id = id,
+                name = name,
+                ip = ip,
+                port = port,
+                username = username,
+                password = password,
+                sshKeyPath = sshKeyPath,
+                iconName = iconName,
+                status = ServerStatus.UNKNOWN
+            )
+        }
+    }
+
+    private fun org.cuak.sshapp.SelectDeviceById.toDomain(): Device {
+        return if (camera_protocol != null) {
+            Camera(
+                id = id,
+                name = name,
+                ip = ip,
+                port = port,
+                username = username,
+                password = password,
+                sshKeyPath = sshKeyPath,
+                iconName = iconName,
+                status = ServerStatus.UNKNOWN,
+                cameraProtocol = camera_protocol,
+                cameraPort = camera_port ?: 8554,
+                cameraStream = camera_stream ?: "ch0_0.h264"
+            )
+        } else {
+            Server(
+                id = id,
+                name = name,
+                ip = ip,
+                port = port,
+                username = username,
+                password = password,
+                sshKeyPath = sshKeyPath,
+                iconName = iconName,
+                status = ServerStatus.UNKNOWN
+            )
+        }
     }
 }

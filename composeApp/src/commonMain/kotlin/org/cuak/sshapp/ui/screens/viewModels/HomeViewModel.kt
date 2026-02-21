@@ -18,46 +18,51 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import org.cuak.sshapp.models.Device
 import org.cuak.sshapp.models.Server
+import org.cuak.sshapp.models.Camera
 import org.cuak.sshapp.models.ServerStatus
 import org.cuak.sshapp.network.ConnectivityManager
 import org.cuak.sshapp.repository.ServerRepository
 
-// UI State para manejar la carga y la lista combinada
+// UI State adaptado a 'Device'
 data class HomeUiState(
-    val servers: List<Server> = emptyList(),
+    val devices: List<Device> = emptyList(),
     val isLoading: Boolean = true
 )
 
 class HomeViewModel(
     private val repository: ServerRepository,
-    private val connectivity: ConnectivityManager // Inyectado por constructor
+    private val connectivity: ConnectivityManager
 ) : ScreenModel {
 
-    // 1. Estado para el servidor seleccionado (BottomSheet)
-    var selectedServer by mutableStateOf<Server?>(null)
+    // 1. Estado para el dispositivo seleccionado (BottomSheet)
+    var selectedDevice by mutableStateOf<Device?>(null)
         private set
 
     // 2. Estado interno de los pings (Map: ID -> Online?)
     private val _pingStatus = MutableStateFlow<Map<Long, Boolean>>(emptyMap())
 
     // 3. Flow combinado: Base de datos + Estado de Red
-    // Mapeamos el resultado del ping al enum ServerStatus para que la UI (ServerCard) lo entienda
     val uiState: StateFlow<HomeUiState> = combine(
-        repository.getAllServers(),
+        repository.getAllServers(), // Sigue llamándose getAllServers en tu Repo, pero devuelve List<Device>
         _pingStatus
-    ) { servers, pingMap ->
-        val mappedServers = servers.map { server ->
-            // Si tenemos un estado de ping, lo usamos. Si no, mantenemos UNKNOWN o OFFLINE según prefieras.
-            val isOnline = pingMap[server.id]
+    ) { devices, pingMap ->
+        val mappedDevices = devices.map { device ->
+            val isOnline = pingMap[device.id]
             val status = when (isOnline) {
                 true -> ServerStatus.ONLINE
                 false -> ServerStatus.OFFLINE
                 null -> ServerStatus.UNKNOWN
             }
-            server.copy(status = status)
+
+            // MAGIA KOTLIN: Como Device es interfaz, hacemos cast seguro para usar su copy()
+            when (device) {
+                is Server -> device.copy(status = status)
+                is Camera -> device.copy(status = status)
+            }
         }
-        HomeUiState(servers = mappedServers, isLoading = false)
+        HomeUiState(devices = mappedDevices, isLoading = false)
     }.stateIn(
         scope = screenModelScope,
         started = SharingStarted.WhileSubscribed(5000),
@@ -68,58 +73,56 @@ class HomeViewModel(
         startMonitoringLoop()
     }
 
-    // --- Lógica de Monitoreo Optimizada (Step 5) ---
     private fun startMonitoringLoop() {
         screenModelScope.launch(Dispatchers.IO) {
             while (isActive) {
-                // Obtenemos snapshot de servidores sin observar
-                val currentServers = repository.getAllServers().first()
+                val currentDevices = repository.getAllServers().first()
 
-                if (currentServers.isNotEmpty()) {
-                    // Ping en paralelo a todos
-                    val results = currentServers.map { server ->
+                if (currentDevices.isNotEmpty()) {
+                    val results = currentDevices.map { device ->
                         async {
                             val isReachable = try {
-                                connectivity.isReachable(server.ip)
+                                // Funciona perfecto porque 'ip' está en la interfaz base Device
+                                connectivity.isReachable(device.ip)
                             } catch (e: Exception) {
                                 false
                             }
-                            server.id to isReachable
+                            device.id to isReachable
                         }
                     }.awaitAll().toMap()
 
-                    // Actualizamos el mapa de estados
                     _pingStatus.value = results
                 }
-
-                // Esperamos 10s
                 delay(10000)
             }
         }
     }
 
     // --- Acciones de UI (BottomSheet) ---
-    fun showServerOptions(server: Server) { selectedServer = server }
-    fun dismissOptions() { selectedServer = null }
+    fun showDeviceOptions(device: Device) { selectedDevice = device }
+    fun dismissOptions() { selectedDevice = null }
 
     // --- Operaciones CRUD ---
 
-    fun addServer(server: Server) {
+    fun addDevice(device: Device) {
         screenModelScope.launch {
-            // Aseguramos que el ID sea 0 para que la BD genere uno nuevo
-            repository.addServer(server.copy(id = 0))
+            // Ponemos ID 0 dependiendo del tipo concreto
+            val newDevice = when (device) {
+                is Server -> device.copy(id = 0)
+                is Camera -> device.copy(id = 0)
+            }
+            repository.addServer(newDevice)
         }
     }
 
-    // Actualiza usando el objeto completo
-    fun updateServer(server: Server) {
+    fun updateDevice(device: Device) {
         screenModelScope.launch {
-            repository.updateServer(server)
-            dismissOptions() // Cierra el menú inferior si estaba abierto
+            repository.updateServer(device)
+            dismissOptions()
         }
     }
 
-    fun deleteServer(id: Long) {
+    fun deleteDevice(id: Long) {
         screenModelScope.launch {
             repository.deleteServer(id)
             dismissOptions()

@@ -17,7 +17,9 @@ import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.koin.koinScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import org.cuak.sshapp.models.Device
 import org.cuak.sshapp.models.Server
+import org.cuak.sshapp.models.Camera
 import org.cuak.sshapp.ui.components.ServerCard
 import org.cuak.sshapp.ui.screens.viewModels.HomeViewModel
 
@@ -30,8 +32,9 @@ class HomeScreen : Screen {
 
         HomeScreenContent(
             viewModel = viewModel,
-            onServerClick = { server ->
-                navigator.push(ServerDetailScreen(serverId = server.id))
+            onDeviceClick = { device ->
+                // Ambos tienen ID, así que la navegación se mantiene igual
+                navigator.push(ServerDetailScreen(serverId = device.id))
             }
         )
     }
@@ -41,22 +44,20 @@ class HomeScreen : Screen {
 @Composable
 private fun HomeScreenContent(
     viewModel: HomeViewModel,
-    onServerClick: (Server) -> Unit
+    onDeviceClick: (Device) -> Unit
 ) {
-    // 1. CAMBIO: Observamos el estado completo (Carga + Datos)
     val state by viewModel.uiState.collectAsState()
 
-    // Estado local para diálogos
     var showAddDialog by remember { mutableStateOf(false) }
     var showEditDialog by remember { mutableStateOf(false) }
 
     val sheetState = rememberModalBottomSheetState()
-    val selectedServer = viewModel.selectedServer
+    val selectedDevice = viewModel.selectedDevice
 
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Mis Servidores") },
+                title = { Text("Mis Dispositivos") },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background
                 )
@@ -67,24 +68,23 @@ private fun HomeScreenContent(
                 onClick = { showAddDialog = true },
                 containerColor = MaterialTheme.colorScheme.primary
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Añadir Servidor")
+                Icon(Icons.Default.Add, contentDescription = "Añadir Dispositivo")
             }
         }
     ) { padding ->
 
-        // 2. MEJORA: Gestión de estados de UI (Cargando vs Vacío vs Contenido)
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
         ) {
             when {
-                state.isLoading && state.servers.isEmpty() -> {
+                state.isLoading && state.devices.isEmpty() -> {
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 }
-                state.servers.isEmpty() -> {
+                state.devices.isEmpty() -> {
                     Text(
-                        text = "No hay servidores configurados.\nPulsa + para añadir uno.",
+                        text = "No hay dispositivos configurados.\nPulsa + para añadir uno.",
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
@@ -93,64 +93,77 @@ private fun HomeScreenContent(
                 }
                 else -> {
                     LazyVerticalGrid(
-                        columns = GridCells.Adaptive(minSize = 160.dp), // Ajustado para mejor visualización
+                        columns = GridCells.Adaptive(minSize = 160.dp),
                         contentPadding = PaddingValues(16.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        items(state.servers, key = { it.id }) { server ->
-                            ServerCard(
-                                server = server,
-                                // El estado (Online/Offline) ya viene inyectado en server.status desde el ViewModel
-                                onClick = { onServerClick(server) },
-                                onLongClick = { viewModel.showServerOptions(server) }
-                            )
+                        items(state.devices, key = { it.id }) { device ->
+                            // --- MAGIA DE LA INTERFAZ SEALED ---
+                            // Te permite decidir cómo pintar el componente según su tipo real.
+                            // NOTA: Asegúrate de que ServerCard esté modificado para aceptar 'Device'
+                            // en lugar de 'Server', o crea un componente nuevo.
+                            when (device) {
+                                is Server -> {
+                                    ServerCard(
+                                        device = device, // Asumiendo que ServerCard acepta el tipo Server o Device
+                                        onClick = { onDeviceClick(device) },
+                                        onLongClick = { viewModel.showDeviceOptions(device) }
+                                    )
+                                }
+                                is Camera -> {
+                                    // Aquí podrías usar un CameraCard diferente en el futuro
+                                    // que muestre un fotograma RTSP miniatura, por ejemplo.
+                                    // Por ahora reutilizamos ServerCard (casteándolo si fuera necesario)
+                                    ServerCard(
+                                        device = device,
+                                        onClick = { onDeviceClick(device) },
+                                        onLongClick = { viewModel.showDeviceOptions(device) }
+                                    )
+                                }
+                            }
                         }
                     }
                 }
             }
         }
 
-        // --- Gestión de Diálogos y BottomSheets ---
-
-        // 3. Bottom Sheet de Opciones
-        if (selectedServer != null) {
+        // Bottom Sheet de Opciones
+        if (selectedDevice != null) {
             ModalBottomSheet(
                 onDismissRequest = { viewModel.dismissOptions() },
                 sheetState = sheetState
             ) {
-                ServerOptionsContent(
-                    onEdit = { showEditDialog = true }, // El diálogo se superpondrá
-                    onDelete = { viewModel.deleteServer(selectedServer.id) }
+                DeviceOptionsContent(
+                    onEdit = { showEditDialog = true },
+                    onDelete = { viewModel.deleteDevice(selectedDevice.id) }
                 )
             }
         }
 
-        // 4. Diálogo de Edición
-        if (showEditDialog && selectedServer != null) {
+        // Diálogo de Edición
+        if (showEditDialog && selectedDevice != null) {
             ServerFormDialog(
-                server = selectedServer,
+                device = selectedDevice,
                 onDismiss = {
                     showEditDialog = false
                     viewModel.dismissOptions()
                 },
-                onConfirm = { updatedServer ->
-                    // Pasamos el objeto completo al ViewModel
-                    viewModel.updateServer(updatedServer)
+                onConfirm = { updatedDevice ->
+                    viewModel.updateDevice(updatedDevice)
                     showEditDialog = false
                 }
             )
         }
 
-        // 5. Diálogo de Añadir
+        // Diálogo de Añadir
         if (showAddDialog) {
             ServerFormDialog(
-                server = null, // Es nuevo, así que null
+                device = null,
                 onDismiss = { showAddDialog = false },
-                onConfirm = { newServer ->
-                    // Pasamos el objeto completo al ViewModel
-                    viewModel.addServer(newServer)
+                onConfirm = { newDevice ->
+                    viewModel.addDevice(newDevice)
                     showAddDialog = false
                 }
             )
@@ -158,23 +171,19 @@ private fun HomeScreenContent(
     }
 }
 
-/**
- * Componente extraído para limpiar el código principal.
- * Muestra las opciones disponibles para un servidor.
- */
 @Composable
-private fun ServerOptionsContent(
+private fun DeviceOptionsContent(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
     Column(modifier = Modifier.padding(bottom = 24.dp)) {
         ListItem(
-            headlineContent = { Text("Editar Servidor") },
+            headlineContent = { Text("Editar Dispositivo") },
             leadingContent = { Icon(Icons.Default.Edit, contentDescription = null) },
             modifier = Modifier.clickable { onEdit() }
         )
         ListItem(
-            headlineContent = { Text("Eliminar Servidor", color = MaterialTheme.colorScheme.error) },
+            headlineContent = { Text("Eliminar Dispositivo", color = MaterialTheme.colorScheme.error) },
             leadingContent = {
                 Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
             },

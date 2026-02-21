@@ -19,53 +19,55 @@ import androidx.compose.ui.window.Dialog
 import io.github.vinceglb.filekit.dialogs.FileKitType
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
 import io.github.vinceglb.filekit.path
-import org.cuak.sshapp.models.DeviceType
+import org.cuak.sshapp.models.Device
 import org.cuak.sshapp.models.Server
-// Asegúrate de que esta función exista en tu proyecto (como en la Versión B)
-// Si no la tienes, puedes copiarla de ServerCard.kt o donde la hayas definido.
+import org.cuak.sshapp.models.Camera
 import org.cuak.sshapp.ui.components.getIconByName
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServerFormDialog(
-    server: Server? = null,
+    device: Device? = null, // Ahora usamos la interfaz base
     onDismiss: () -> Unit,
-    onConfirm: (Server) -> Unit
+    onConfirm: (Device) -> Unit // Devolvemos la interfaz base
 ) {
     // --- ESTADOS COMUNES ---
-    var name by remember { mutableStateOf(server?.name ?: "") }
-    var ip by remember { mutableStateOf(server?.ip ?: "") }
-    var port by remember { mutableStateOf(server?.port?.toString() ?: "22") }
-    var username by remember { mutableStateOf(server?.username ?: "") }
-    var password by remember { mutableStateOf(server?.password ?: "") }
-    var sshKeyPath by remember { mutableStateOf(server?.sshKeyPath ?: "") }
+    var name by remember { mutableStateOf(device?.name ?: "") }
+    var ip by remember { mutableStateOf(device?.ip ?: "") }
+    var port by remember { mutableStateOf(device?.port?.toString() ?: "22") }
+    var username by remember { mutableStateOf(device?.username ?: "") }
+    var password by remember { mutableStateOf(device?.password ?: "") }
+    var sshKeyPath by remember { mutableStateOf(device?.sshKeyPath ?: "") }
     var passwordVisible by remember { mutableStateOf(false) }
 
     // --- ESTADOS DE TIPO Y UI ---
-    var type by remember { mutableStateOf(server?.type ?: DeviceType.SERVER) }
-    var selectedIcon by remember { mutableStateOf(server?.iconName ?: "dns") } // Default "dns"
+    // Determinamos si es cámara comprobando la clase del objeto inicial
+    var isCameraType by remember { mutableStateOf(device is Camera) }
+    var selectedIcon by remember { mutableStateOf(device?.iconName ?: "dns") }
 
     // Control de dropdowns
     var typeExpanded by remember { mutableStateOf(false) }
     var iconExpanded by remember { mutableStateOf(false) }
 
     // --- ESTADOS ESPECÍFICOS DE CÁMARA ---
-    var cameraProtocol by remember { mutableStateOf(server?.cameraProtocol ?: "RTSP") }
-    var cameraPort by remember { mutableStateOf(server?.cameraPort?.toString() ?: "8554") }
-    var cameraStream by remember { mutableStateOf(server?.cameraStream ?: "ch0_0.h264") }
+    // Intentamos castear el device inicial a Camera para sacar sus valores si los tiene
+    val initialCamera = device as? Camera
+    var cameraProtocol by remember { mutableStateOf(initialCamera?.cameraProtocol ?: "RTSP") }
+    var cameraPort by remember { mutableStateOf(initialCamera?.cameraPort?.toString() ?: "8554") }
+    var cameraStream by remember { mutableStateOf(initialCamera?.cameraStream ?: "ch0_0.h264") }
 
-    // Lista de iconos disponibles (Versión B)
+    // Lista de iconos disponibles
     val iconOptions = listOf(
         "dns", "videocam", "camera_alt", "security", "cast_connected",
         "storage", "computer", "router", "cloud", "memory", "smart_toy"
     )
 
-    // --- LÓGICA AUTOMÁTICA (Fusión A+B) ---
-    // Si cambiamos a CÁMARA y es un servidor nuevo, sugerimos icono y puerto por defecto
-    LaunchedEffect(type) {
-        if (type == DeviceType.CAMERA && server == null) {
+    // --- LÓGICA AUTOMÁTICA ---
+    // Si cambiamos a CÁMARA y es un dispositivo nuevo, sugerimos icono
+    LaunchedEffect(isCameraType) {
+        if (isCameraType && device == null) {
             if (selectedIcon == "dns") selectedIcon = "videocam"
-        } else if (type == DeviceType.SERVER && server == null) {
+        } else if (!isCameraType && device == null) {
             if (selectedIcon == "videocam") selectedIcon = "dns"
         }
     }
@@ -83,7 +85,7 @@ fun ServerFormDialog(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp)
-                .heightIn(max = 750.dp), // Altura máxima para evitar desbordes
+                .heightIn(max = 750.dp),
             shape = MaterialTheme.shapes.large
         ) {
             Column(
@@ -93,25 +95,25 @@ fun ServerFormDialog(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    text = if (server == null) "Nuevo Dispositivo" else "Editar Dispositivo",
+                    text = if (device == null) "Nuevo Dispositivo" else "Editar Dispositivo",
                     style = MaterialTheme.typography.headlineSmall
                 )
 
                 HorizontalDivider()
 
-                // --- 1. SELECTOR DE TIPO (Estilo Versión B) ---
+                // --- 1. SELECTOR DE TIPO ---
                 ExposedDropdownMenuBox(
                     expanded = typeExpanded,
                     onExpandedChange = { typeExpanded = !typeExpanded }
                 ) {
                     OutlinedTextField(
-                        value = if (type == DeviceType.SERVER) "Servidor Linux" else "Cámara Yi Hack",
+                        value = if (!isCameraType) "Servidor Linux" else "Cámara Yi Hack",
                         onValueChange = {},
                         readOnly = true,
                         label = { Text("Tipo de Dispositivo") },
                         leadingIcon = {
                             Icon(
-                                imageVector = if (type == DeviceType.SERVER) Icons.Default.Dns else Icons.Default.Videocam,
+                                imageVector = if (!isCameraType) Icons.Default.Dns else Icons.Default.Videocam,
                                 contentDescription = null
                             )
                         },
@@ -133,7 +135,7 @@ fun ServerFormDialog(
                                     Text("VPS, Raspberry Pi, Ubuntu...", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
                                 }
                             },
-                            onClick = { type = DeviceType.SERVER; typeExpanded = false },
+                            onClick = { isCameraType = false; typeExpanded = false },
                             leadingIcon = { Icon(Icons.Default.Dns, null) }
                         )
                         HorizontalDivider()
@@ -144,13 +146,13 @@ fun ServerFormDialog(
                                     Text("Yi Home/Kami (Allwinner/MStar)", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
                                 }
                             },
-                            onClick = { type = DeviceType.CAMERA; typeExpanded = false },
+                            onClick = { isCameraType = true; typeExpanded = false },
                             leadingIcon = { Icon(Icons.Default.Videocam, null) }
                         )
                     }
                 }
 
-                // --- 2. SELECTOR DE ICONO (Versión B) ---
+                // --- 2. SELECTOR DE ICONO ---
                 ExposedDropdownMenuBox(
                     expanded = iconExpanded,
                     onExpandedChange = { iconExpanded = !iconExpanded }
@@ -210,7 +212,7 @@ fun ServerFormDialog(
                     onValueChange = { username = it },
                     label = { Text("Usuario SSH") },
                     modifier = Modifier.fillMaxWidth(),
-                    placeholder = { if (type == DeviceType.CAMERA) Text("root") },
+                    placeholder = { if (isCameraType) Text("root") },
                     singleLine = true
                 )
 
@@ -236,7 +238,7 @@ fun ServerFormDialog(
                     modifier = Modifier.fillMaxWidth(),
                     placeholder = { Text("Seleccionar archivo...") },
                     singleLine = true,
-                    readOnly = true, // Es readOnly porque usamos el botón para llenar
+                    readOnly = true,
                     trailingIcon = {
                         IconButton(onClick = { launcher.launch() }) {
                             Icon(Icons.Default.AttachFile, contentDescription = "Seleccionar archivo")
@@ -244,8 +246,8 @@ fun ServerFormDialog(
                     }
                 )
 
-                // --- 4. CAMPOS ESPECÍFICOS DE CÁMARA (Versión A) ---
-                if (type == DeviceType.CAMERA) {
+                // --- 4. CAMPOS ESPECÍFICOS DE CÁMARA ---
+                if (isCameraType) {
                     Card(
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
                         modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
@@ -262,7 +264,7 @@ fun ServerFormDialog(
                                     onValueChange = { cameraProtocol = it },
                                     label = { Text("Protocolo") },
                                     modifier = Modifier.weight(1f),
-                                    enabled = false // RTSP fijo por ahora
+                                    enabled = false
                                 )
                                 OutlinedTextField(
                                     value = cameraPort,
@@ -321,21 +323,35 @@ fun ServerFormDialog(
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
                         onClick = {
-                            val newServer = Server(
-                                id = server?.id ?: 0,
-                                name = name,
-                                ip = ip,
-                                port = port.toIntOrNull() ?: 22,
-                                username = username,
-                                password = password.ifBlank { null },
-                                type = type,
-                                iconName = selectedIcon, // Guardamos el icono seleccionado
-                                sshKeyPath = sshKeyPath.ifBlank { null },
-                                cameraProtocol = if (type == DeviceType.CAMERA) cameraProtocol else null,
-                                cameraPort = if (type == DeviceType.CAMERA) (cameraPort.toIntOrNull() ?: 8554) else null,
-                                cameraStream = if (type == DeviceType.CAMERA) cameraStream else null
-                            )
-                            onConfirm(newServer)
+                            // AQUÍ ESTÁ LA MAGIA:
+                            // Instanciamos el objeto concreto en función del tipo seleccionado
+                            val finalDevice = if (isCameraType) {
+                                Camera(
+                                    id = device?.id ?: 0,
+                                    name = name,
+                                    ip = ip,
+                                    port = port.toIntOrNull() ?: 22,
+                                    username = username,
+                                    password = password.ifBlank { null },
+                                    sshKeyPath = sshKeyPath.ifBlank { null },
+                                    iconName = selectedIcon,
+                                    cameraProtocol = cameraProtocol,
+                                    cameraPort = cameraPort.toIntOrNull() ?: 8554,
+                                    cameraStream = cameraStream
+                                )
+                            } else {
+                                Server(
+                                    id = device?.id ?: 0,
+                                    name = name,
+                                    ip = ip,
+                                    port = port.toIntOrNull() ?: 22,
+                                    username = username,
+                                    password = password.ifBlank { null },
+                                    sshKeyPath = sshKeyPath.ifBlank { null },
+                                    iconName = selectedIcon
+                                )
+                            }
+                            onConfirm(finalDevice)
                         },
                         enabled = name.isNotBlank() && ip.isNotBlank() && username.isNotBlank()
                     ) {

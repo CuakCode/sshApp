@@ -18,10 +18,10 @@ import net.schmizz.sshj.userauth.method.ChallengeResponseProvider
 import net.schmizz.sshj.userauth.password.Resource
 import net.schmizz.sshj.xfer.FileSystemFile
 import net.schmizz.sshj.xfer.TransferListener
-import org.cuak.sshapp.models.DeviceType
+import org.cuak.sshapp.models.Device
+import org.cuak.sshapp.models.Camera
 import org.cuak.sshapp.models.PortInfo
 import org.cuak.sshapp.models.ProcessInfo
-import org.cuak.sshapp.models.Server
 import org.cuak.sshapp.models.ServerMetrics
 import org.cuak.sshapp.models.SftpFile
 import java.io.File
@@ -40,13 +40,14 @@ abstract class AbstractSshjClient : SshClient {
     }
 
     // --- 1. MÉTODO PARA MONITOR (MÉTRICAS) ---
-    override suspend fun fetchMetrics(server: Server): Result<ServerMetrics> = withContext(Dispatchers.IO) {
+    override suspend fun fetchMetrics(device: Device): Result<ServerMetrics> = withContext(Dispatchers.IO) {
         val client = SSHClient()
         try {
             onConfigureClient(client)
-            client.connectAndAuthenticate(server)
+            client.connectAndAuthenticate(device)
 
-            val cpuCmd = if (server.type == DeviceType.CAMERA) {
+            // Comprobamos directamente si la instancia es Camera
+            val cpuCmd = if (device is Camera) {
                 "top -bn1 | grep '^CPU' | tr -d '%' | awk '{print \$2 + \$4}'"
             } else {
                 "top -bn1 | grep -i 'Cpu(s)' | awk '{print \$2 + \$4}'"
@@ -58,7 +59,7 @@ abstract class AbstractSshjClient : SshClient {
                 cleanOutput.trim().toDoubleOrNull() ?: 0.0
             } catch (e: Exception) { 0.0 }
 
-            val ramCmd = if (server.type == DeviceType.CAMERA) {
+            val ramCmd = if (device is Camera) {
                 "free | awk 'NR==2{printf \"%.2f\", \$3*100/\$2 }'"
             } else {
                 "free -m | awk 'NR==2{printf \"%.2f\", \$3*100/\$2 }'"
@@ -105,11 +106,11 @@ abstract class AbstractSshjClient : SshClient {
     }
 
     // --- 2. MÉTODO PARA TERMINAL ---
-    override suspend fun openTerminal(server: Server): Result<SshTerminalSession> = withContext(Dispatchers.IO) {
+    override suspend fun openTerminal(device: Device): Result<SshTerminalSession> = withContext(Dispatchers.IO) {
         val client = SSHClient()
         try {
             onConfigureClient(client)
-            client.connectAndAuthenticate(server)
+            client.connectAndAuthenticate(device)
 
             val session = client.startSession()
             session.allocateDefaultPTY()
@@ -123,11 +124,11 @@ abstract class AbstractSshjClient : SshClient {
     }
 
     // --- 3. MÉTODO PARA EJECUTAR COMANDO SIMPLE ---
-    override suspend fun executeCommand(server: Server, command: String): Result<String> = withContext(Dispatchers.IO) {
+    override suspend fun executeCommand(device: Device, command: String): Result<String> = withContext(Dispatchers.IO) {
         val client = SSHClient()
         try {
             onConfigureClient(client)
-            client.connectAndAuthenticate(server)
+            client.connectAndAuthenticate(device)
             Result.success(client.execOneCommand(command))
         } catch (e: Exception) {
             Result.failure(e)
@@ -137,15 +138,15 @@ abstract class AbstractSshjClient : SshClient {
     }
 
     // --- 4. MÉTODO PARA APAGAR ---
-    override suspend fun shutdown(server: Server): Result<Unit> = withContext(Dispatchers.IO) {
+    override suspend fun shutdown(device: Device): Result<Unit> = withContext(Dispatchers.IO) {
         val client = SSHClient()
         try {
             onConfigureClient(client)
-            client.connectAndAuthenticate(server)
+            client.connectAndAuthenticate(device)
             val session = client.startSession()
             try {
                 val cmd = session.exec("sudo -S -p '' poweroff")
-                val password = server.password?.trim()
+                val password = device.password?.trim()
                 cmd.outputStream.use { it.write((password + "\n").toByteArray()) }
                 cmd.join(2, TimeUnit.SECONDS)
                 Result.success(Unit)
@@ -160,13 +161,13 @@ abstract class AbstractSshjClient : SshClient {
     }
 
     // --- 5. PROCESOS ---
-    override suspend fun fetchProcesses(server: Server): Result<List<ProcessInfo>> = withContext(Dispatchers.IO) {
+    override suspend fun fetchProcesses(device: Device): Result<List<ProcessInfo>> = withContext(Dispatchers.IO) {
         val client = SSHClient()
         try {
             onConfigureClient(client)
-            client.connectAndAuthenticate(server)
+            client.connectAndAuthenticate(device)
 
-            val processes = if (server.type == DeviceType.CAMERA) {
+            val processes = if (device is Camera) {
                 val cmd = "top -b -n 1"
                 val output = client.execOneCommand(cmd)
                 parseBusyBoxTop(output)
@@ -185,11 +186,11 @@ abstract class AbstractSshjClient : SshClient {
     }
 
     // --- 6. LISTAR ARCHIVOS REMOTOS (SFTP) ---
-    override suspend fun listRemoteFiles(server: Server, path: String): Result<List<SftpFile>> = withContext(Dispatchers.IO) {
+    override suspend fun listRemoteFiles(device: Device, path: String): Result<List<SftpFile>> = withContext(Dispatchers.IO) {
         val client = SSHClient()
         try {
             onConfigureClient(client)
-            client.connectAndAuthenticate(server)
+            client.connectAndAuthenticate(device)
 
             val sftp: SFTPClient = client.newSFTPClient()
             try {
@@ -218,15 +219,14 @@ abstract class AbstractSshjClient : SshClient {
 
     // --- 7. SUBIR ARCHIVO (SFTP CON PROGRESO) ---
     override suspend fun uploadFile(
-        server: Server,
+        device: Device,
         localPath: String,
         remotePath: String,
         onProgress: (Float) -> Unit
     ): Result<Unit> = withContext(Dispatchers.IO) {
-        performTransfer(server) { sftp ->
+        performTransfer(device) { sftp ->
             val file = FileSystemFile(localPath)
             val size = File(localPath).length()
-            // Pasamos el tamaño total al creador del listener
             sftp.fileTransfer.transferListener = createListener(size, onProgress)
             sftp.put(file, remotePath)
         }
@@ -234,15 +234,14 @@ abstract class AbstractSshjClient : SshClient {
 
     // --- 8. DESCARGAR ARCHIVO (SFTP CON PROGRESO) ---
     override suspend fun downloadFile(
-        server: Server,
+        device: Device,
         remotePath: String,
         localPath: String,
         onProgress: (Float) -> Unit
     ): Result<Unit> = withContext(Dispatchers.IO) {
-        performTransfer(server) { sftp ->
+        performTransfer(device) { sftp ->
             val attrs = sftp.stat(remotePath)
             val size = attrs.size
-            // Pasamos el tamaño total al creador del listener
             sftp.fileTransfer.transferListener = createListener(size, onProgress)
             sftp.get(remotePath, FileSystemFile(localPath))
         }
@@ -250,11 +249,11 @@ abstract class AbstractSshjClient : SshClient {
 
     // --- HELPERS PRIVADOS DE TRANSFERENCIA ---
 
-    private suspend fun performTransfer(server: Server, block: (SFTPClient) -> Unit): Result<Unit> {
+    private suspend fun performTransfer(device: Device, block: (SFTPClient) -> Unit): Result<Unit> {
         val client = SSHClient()
         return try {
             onConfigureClient(client)
-            client.connectAndAuthenticate(server)
+            client.connectAndAuthenticate(device)
             val sftp = client.newSFTPClient()
             try {
                 block(sftp)
@@ -269,22 +268,11 @@ abstract class AbstractSshjClient : SshClient {
         }
     }
 
-    // --- CORRECCIÓN FINAL: IMPLEMENTACIÓN DE LISTENER ---
-    // Implementamos tanto TransferListener como StreamCopier.Listener
+    // --- IMPLEMENTACIÓN DE LISTENER ---
     private fun createListener(totalSize: Long, onProgress: (Float) -> Unit): TransferListener {
         return object : TransferListener, StreamCopier.Listener {
-
-            // Cuando SFTP inicia un directorio, devolvemos 'this' para seguir escuchando
-            override fun directory(name: String?): TransferListener {
-                return this
-            }
-
-            // Cuando SFTP inicia un archivo, devolvemos 'this' que ahora ES un StreamCopier.Listener
-            override fun file(name: String?, size: Long): StreamCopier.Listener {
-                return this
-            }
-
-            // Método real de progreso de StreamCopier.Listener
+            override fun directory(name: String?): TransferListener = this
+            override fun file(name: String?, size: Long): StreamCopier.Listener = this
             override fun reportProgress(transferred: Long) {
                 if (totalSize > 0) {
                     val percent = transferred.toFloat() / totalSize.toFloat()
@@ -337,25 +325,26 @@ abstract class AbstractSshjClient : SshClient {
 
     // --- HELPERS DE CONEXIÓN Y PARSEO ---
 
-    protected fun SSHClient.connectAndAuthenticate(server: Server) {
+    protected fun SSHClient.connectAndAuthenticate(device: Device) {
         addHostKeyVerifier(PromiscuousVerifier())
 
-        if (server.ip.contains(":")) {
-            val parts = server.ip.split(":")
+        if (device.ip.contains(":")) {
+            val parts = device.ip.split(":")
             val ip = parts[0]
-            val port = parts[1].toIntOrNull() ?: 22
+            val port = parts[1].toIntOrNull() ?: device.port
             connect(ip, port)
         } else {
-            connect(server.ip, 22)
+            // Utilizamos la propiedad port del Device en lugar de hardcodear el 22
+            connect(device.ip, device.port)
         }
 
-        val cleanPassword = server.password?.trim()
-        if (!server.sshKeyPath.isNullOrBlank()) {
-            val keyProvider: KeyProvider = loadKeys(server.sshKeyPath)
-            authPublickey(server.username, keyProvider)
+        val cleanPassword = device.password?.trim()
+        if (!device.sshKeyPath.isNullOrBlank()) {
+            val keyProvider: KeyProvider = loadKeys(device.sshKeyPath)
+            authPublickey(device.username, keyProvider)
         } else {
             try {
-                authPassword(server.username, cleanPassword)
+                authPassword(device.username, cleanPassword)
             } catch (e: Exception) {
                 val kbi = AuthKeyboardInteractive(object : ChallengeResponseProvider {
                     override fun getSubmethods() = emptyList<String>()
@@ -363,7 +352,7 @@ abstract class AbstractSshjClient : SshClient {
                     override fun shouldRetry() = false
                     override fun getResponse(p: String?, e: Boolean) = cleanPassword?.toCharArray()
                 })
-                auth(server.username, kbi)
+                auth(device.username, kbi)
             }
         }
     }

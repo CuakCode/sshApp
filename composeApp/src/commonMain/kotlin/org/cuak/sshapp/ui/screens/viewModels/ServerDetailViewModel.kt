@@ -10,7 +10,7 @@ import org.cuak.sshapp.domain.ssh.SshClient
 import org.cuak.sshapp.domain.ssh.SshTerminalSession
 import org.cuak.sshapp.models.ProcessInfo
 import org.cuak.sshapp.models.ProcessSortOption
-import org.cuak.sshapp.models.Server
+import org.cuak.sshapp.models.Device
 import org.cuak.sshapp.models.ServerMetrics
 import org.cuak.sshapp.repository.ServerRepository
 
@@ -26,7 +26,8 @@ class ServerDetailViewModel(
     private val sshClient: SshClient
 ) : ScreenModel {
 
-    var server by mutableStateOf<Server?>(null)
+    // Cambiado de 'server' a 'device'
+    var device by mutableStateOf<Device?>(null)
         private set
 
     var uiState by mutableStateOf<DetailUiState>(DetailUiState.Idle)
@@ -34,7 +35,6 @@ class ServerDetailViewModel(
 
     private var terminalSession: SshTerminalSession? = null
 
-    // Output visual (Acumula el texto crudo con códigos ANSI)
     var terminalOutput by mutableStateOf("")
         private set
 
@@ -50,18 +50,16 @@ class ServerDetailViewModel(
     // --- Métricas ---
     fun loadServer(serverId: Long) {
         screenModelScope.launch {
-            server = repository.getServerById(serverId)
-            // Opcional: Cargar métricas automáticamente al iniciar si NO es cámara
-            // Si es cámara, la UI priorizará el video, así que quizás no queremos cargar métricas inmediatamente
-            // para no saturar la red. Dejamos que la pestaña Monitor las pida.
+            device = repository.getServerById(serverId)
         }
     }
 
     fun fetchMetrics() {
-        val currentServer = server ?: return
+        val currentDevice = device ?: return
         screenModelScope.launch {
             uiState = DetailUiState.Loading
-            val result = sshClient.fetchMetrics(currentServer)
+            // NOTA: Asegúrate de que SshClient.fetchMetrics acepta 'Device'
+            val result = sshClient.fetchMetrics(currentDevice)
             uiState = result.fold(
                 onSuccess = { DetailUiState.Success(it) },
                 onFailure = { DetailUiState.Error(it.message ?: "Error") }
@@ -71,11 +69,11 @@ class ServerDetailViewModel(
 
     // --- Procesos ---
     fun fetchProcesses() {
-        val currentServer = server ?: return
+        val currentDevice = device ?: return
         screenModelScope.launch {
             isProcessesLoading = true
-            sshClient.fetchProcesses(currentServer).onSuccess { rawList ->
-                // Aplicamos ordenación inicial
+            // NOTA: Asegúrate de que SshClient.fetchProcesses acepta 'Device'
+            sshClient.fetchProcesses(currentDevice).onSuccess { rawList ->
                 processes = sortList(rawList, processSortOption)
             }
             isProcessesLoading = false
@@ -97,27 +95,25 @@ class ServerDetailViewModel(
     }
 
     fun shutdownServer() {
-        val currentServer = server ?: return
-        screenModelScope.launch { sshClient.shutdown(currentServer) }
+        val currentDevice = device ?: return
+        screenModelScope.launch { sshClient.shutdown(currentDevice) }
     }
 
     // --- Terminal ---
     fun startTerminal() {
-        val currentServer = server ?: return
+        val currentDevice = device ?: return
         if (terminalSession != null) return
 
         screenModelScope.launch {
-            terminalOutput = "Conectado a ${currentServer.ip}...\n"
+            terminalOutput = "Conectado a ${currentDevice.ip}...\n"
 
-            sshClient.openTerminal(currentServer).fold(
+            // NOTA: Asegúrate de que SshClient.openTerminal acepta 'Device'
+            sshClient.openTerminal(currentDevice).fold(
                 onSuccess = { session ->
                     terminalSession = session
 
                     session.output.collect { newRawText ->
-                        // Acumulamos texto crudo
                         terminalOutput += newRawText
-
-                        // Limpieza preventiva buffer
                         if (terminalOutput.length > 15000) {
                             terminalOutput = terminalOutput.takeLast(15000)
                         }

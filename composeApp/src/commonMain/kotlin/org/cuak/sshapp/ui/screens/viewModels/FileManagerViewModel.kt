@@ -12,14 +12,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.cuak.sshapp.domain.files.LocalFileSystem
 import org.cuak.sshapp.domain.ssh.SshClient
-import org.cuak.sshapp.models.Server
+import org.cuak.sshapp.models.Device
 import org.cuak.sshapp.models.SftpFile
 
 enum class SortOption { NAME, SIZE, DATE }
 enum class SortDirection { ASC, DESC }
 
 class FileManagerViewModel(
-    private val server: Server,
+    private val device: Device, // <- Cambiado a Device
     private val sshClient: SshClient,
     private val localFileSystem: LocalFileSystem
 ) : ScreenModel {
@@ -143,7 +143,7 @@ class FileManagerViewModel(
     private fun refreshRemote() {
         screenModelScope.launch {
             _isLoading.value = true
-            sshClient.listRemoteFiles(server, _remotePath.value)
+            sshClient.listRemoteFiles(device, _remotePath.value) // Pasamos el 'device'
                 .onSuccess { files ->
                     _remoteFiles.value = sortFiles(files, remoteSortOption, remoteSortDirection)
                 }
@@ -164,7 +164,7 @@ class FileManagerViewModel(
 
             val destPath = if (_remotePath.value.endsWith("/")) "${_remotePath.value}${file.name}" else "${_remotePath.value}/${file.name}"
 
-            sshClient.uploadFile(server, file.path, destPath) { progress ->
+            sshClient.uploadFile(device, file.path, destPath) { progress -> // Pasamos el 'device'
                 _transferProgress.value = progress
             }
                 .onSuccess {
@@ -188,7 +188,7 @@ class FileManagerViewModel(
             val separator = if (_localPath.value.endsWith("/") || _localPath.value.endsWith("\\")) "" else "/"
             val destPath = "${_localPath.value}$separator${file.name}"
 
-            sshClient.downloadFile(server, file.path, destPath) { progress ->
+            sshClient.downloadFile(device, file.path, destPath) { progress -> // Pasamos el 'device'
                 _transferProgress.value = progress
             }
                 .onSuccess {
@@ -204,28 +204,22 @@ class FileManagerViewModel(
 
     fun openRemoteFile(file: SftpFile) {
         if (file.isDirectory) {
-            // Si es carpeta, navegamos (lógica existente movida aquí)
             val separator = if (_remotePath.value.endsWith("/")) "" else "/"
             navigateRemote("${_remotePath.value}$separator${file.name}")
         } else {
-            // Si es archivo, iniciamos la "apertura remota" (Descarga temporal + Abrir)
             screenModelScope.launch {
                 _isLoading.value = true
                 _statusMessage.value = "Abriendo ${file.name}..."
 
-                // 1. Definir ruta temporal
                 val tempPath = localFileSystem.getTempFilePath(file.name)
 
-                // 2. Descargar (Reutilizamos lógica de SSH pero a ruta temporal)
-                sshClient.downloadFile(server, file.path, tempPath) { progress ->
-                    // Opcional: Mostrar progreso, aunque sea rápido
+                sshClient.downloadFile(device, file.path, tempPath) { progress -> // Pasamos el 'device'
                     _transferProgress.value = progress
                 }
                     .onSuccess {
                         _statusMessage.value = "Abriendo..."
                         _transferProgress.value = null
 
-                        // 3. Abrir el archivo localmente
                         try {
                             localFileSystem.openFile(tempPath)
                         } catch (e: Exception) {
@@ -241,6 +235,7 @@ class FileManagerViewModel(
             }
         }
     }
+
     override fun onDispose() {
         super.onDispose()
         localFileSystem.clearTempFiles()

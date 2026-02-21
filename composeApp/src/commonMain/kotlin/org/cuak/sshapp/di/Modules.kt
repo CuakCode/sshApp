@@ -10,7 +10,7 @@ import org.cuak.sshapp.network.ConnectivityManager
 import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.module
 import org.cuak.sshapp.ui.screens.viewModels.FileManagerViewModel
-import org.cuak.sshapp.models.Server
+import org.cuak.sshapp.models.Device // Cambiado de Server a Device
 
 val commonModule = module {
     // Base de datos
@@ -20,19 +20,18 @@ val commonModule = module {
     singleOf(::ServerRepository)
 
     // --- CORRECCIÓN: REGISTRAR CONNECTIVITY MANAGER ---
-    // Esta es la línea que te falta y causa el error:
     factory { ConnectivityManager() }
 
     // HomeViewModel: Ahora recibe 2 parámetros (Repository, ConnectivityManager)
-    // Por eso usamos get(), get()
     factory { HomeViewModel(get(), get()) }
 
     // ServerDetailViewModel
     factory { ServerDetailViewModel(get(), get()) }
 
-    factory { (server: Server) ->
+    // --- ACTUALIZADO A DEVICE ---
+    factory { (device: Device) ->
         FileManagerViewModel(
-            server = server,
+            device = device,         // Asignamos el device
             sshClient = get(),       // Inyecta SshClient automáticamente
             localFileSystem = get()  // Inyecta LocalFileSystem automáticamente
         )

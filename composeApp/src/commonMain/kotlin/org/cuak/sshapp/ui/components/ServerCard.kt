@@ -1,19 +1,13 @@
 package org.cuak.sshapp.ui.components
 
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
@@ -24,28 +18,26 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import org.cuak.sshapp.models.Server
+import org.cuak.sshapp.models.Device
 import org.cuak.sshapp.models.ServerStatus
 import org.cuak.sshapp.ui.theme.*
-import org.jetbrains.compose.ui.tooling.preview.Preview
-
 
 // ui/components/ServerCard.kt
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ServerCard(
-    server: Server,
+    device: Device, // Ahora acepta la interfaz base
     onClick: () -> Unit,
     onLongClick: () -> Unit
 ) {
-    val statusColor = if (server.status == ServerStatus.ONLINE) StatusSuccess else StatusError
-    val icon = getIconByName(server.iconName)
+    // Leemos las propiedades comunes de la interfaz Device
+    val statusColor = if (device.status == ServerStatus.ONLINE) StatusSuccess else StatusError
+    val icon = getIconByName(device.iconName)
 
     ElevatedCard(
         modifier = Modifier
@@ -67,28 +59,28 @@ fun ServerCard(
         {
 
             Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = statusColor
-                )
+                imageVector = icon,
+                contentDescription = null,
+                tint = statusColor
+            )
 
             Text(
-                text = server.name,
+                text = device.name,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center, // Centra el texto si ocupa varias líneas
-                maxLines = 3, // Permite hasta 2 líneas (puedes aumentarlo o quitarlo)
+                maxLines = 3, // Permite hasta 3 líneas
                 overflow = TextOverflow.Ellipsis // Añade "..." si el nombre es extremadamente largo
             )
             Text(
-                text = server.ip,
+                text = device.ip,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
-
 }
+
 fun getIconByName(name: String): ImageVector {
     // Usamos lowercase para evitar problemas si se guarda en mayúsculas por error
     return when (name.lowercase()) {
