@@ -9,7 +9,9 @@ import org.cuak.sshapp.ServerDatabase
 import org.cuak.sshapp.models.Device
 import org.cuak.sshapp.models.Server
 import org.cuak.sshapp.models.Camera
+import org.cuak.sshapp.models.ServerMetrics
 import org.cuak.sshapp.models.ServerStatus
+import org.cuak.sshapp.utils.getCurrentTimeMillis
 
 class ServerRepository(private val database: ServerDatabase) {
     private val queries = database.serverDatabaseQueries
@@ -148,6 +150,30 @@ class ServerRepository(private val database: ServerDatabase) {
                 iconName = iconName,
                 status = ServerStatus.UNKNOWN
             )
+        }
+    }
+
+    fun saveMetricsAndCleanOld(serverId: Long, metrics: ServerMetrics, retentionDays: Int) {
+
+        // 1. Llamamos a nuestra función multiplataforma nativa
+        val now = getCurrentTimeMillis()
+
+        // Calculamos la fecha límite (1 día = 86_400_000 ms)
+        val cutoffTimestamp = now - (retentionDays * 86_400_000L)
+
+        database.transaction {
+            // 2. Insertamos la métrica
+            database.serverDatabaseQueries.insertMetric(
+                serverId = serverId,
+                cpuUsage = metrics.cpuPercentage,
+                ramUsage = metrics.ramPercentage,
+                diskUsage = metrics.diskUsage.firstOrNull() ?: 0.0,
+                temperature = metrics.temperatures["CPU"] ?: 0.0,
+                timestamp = now
+            )
+
+            // 3. Limpiamos historial viejo
+            database.serverDatabaseQueries.deleteOldMetrics(cutoffTimestamp)
         }
     }
 }

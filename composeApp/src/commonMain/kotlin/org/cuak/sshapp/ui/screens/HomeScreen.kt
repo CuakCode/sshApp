@@ -7,6 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Settings // <-- Importamos el icono de Ajustes
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -35,6 +36,10 @@ class HomeScreen : Screen {
             onDeviceClick = { device ->
                 // Ambos tienen ID, así que la navegación se mantiene igual
                 navigator.push(ServerDetailScreen(serverId = device.id))
+            },
+            onSettingsClick = {
+                // Navegamos a la nueva pantalla de configuración
+                navigator.push(SettingsScreen())
             }
         )
     }
@@ -44,7 +49,8 @@ class HomeScreen : Screen {
 @Composable
 private fun HomeScreenContent(
     viewModel: HomeViewModel,
-    onDeviceClick: (Device) -> Unit
+    onDeviceClick: (Device) -> Unit,
+    onSettingsClick: () -> Unit // <-- Añadimos el callback aquí
 ) {
     val state by viewModel.uiState.collectAsState()
 
@@ -60,7 +66,16 @@ private fun HomeScreenContent(
                 title = { Text("Mis Dispositivos") },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background
-                )
+                ),
+                // --- AÑADIMOS EL BOTÓN DE AJUSTES AQUÍ ---
+                actions = {
+                    IconButton(onClick = onSettingsClick) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Ajustes"
+                        )
+                    }
+                }
             )
         },
         floatingActionButton = {
@@ -100,22 +115,15 @@ private fun HomeScreenContent(
                         modifier = Modifier.fillMaxSize()
                     ) {
                         items(state.devices, key = { it.id }) { device ->
-                            // --- MAGIA DE LA INTERFAZ SEALED ---
-                            // Te permite decidir cómo pintar el componente según su tipo real.
-                            // NOTA: Asegúrate de que ServerCard esté modificado para aceptar 'Device'
-                            // en lugar de 'Server', o crea un componente nuevo.
                             when (device) {
                                 is Server -> {
                                     ServerCard(
-                                        device = device, // Asumiendo que ServerCard acepta el tipo Server o Device
+                                        device = device,
                                         onClick = { onDeviceClick(device) },
                                         onLongClick = { viewModel.showDeviceOptions(device) }
                                     )
                                 }
                                 is Camera -> {
-                                    // Aquí podrías usar un CameraCard diferente en el futuro
-                                    // que muestre un fotograma RTSP miniatura, por ejemplo.
-                                    // Por ahora reutilizamos ServerCard (casteándolo si fuera necesario)
                                     ServerCard(
                                         device = device,
                                         onClick = { onDeviceClick(device) },

@@ -8,7 +8,7 @@ import java.net.UnknownHostException
 actual class ConnectivityManager actual constructor() {
     actual suspend fun isReachable(host: String, timeout: Int): Boolean = withContext(Dispatchers.IO) {
         println("🔍 [Ping] Iniciando comprobación para: $host")
-
+        println("El tiempo de ping es $timeout")
         try {
             // 1. Intento de resolución de DNS
             val address = InetAddress.getByName(host)

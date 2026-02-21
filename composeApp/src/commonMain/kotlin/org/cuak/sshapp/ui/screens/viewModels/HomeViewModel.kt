@@ -24,6 +24,7 @@ import org.cuak.sshapp.models.Camera
 import org.cuak.sshapp.models.ServerStatus
 import org.cuak.sshapp.network.ConnectivityManager
 import org.cuak.sshapp.repository.ServerRepository
+import org.cuak.sshapp.repository.SettingsRepository
 
 // UI State adaptado a 'Device'
 data class HomeUiState(
@@ -33,7 +34,8 @@ data class HomeUiState(
 
 class HomeViewModel(
     private val repository: ServerRepository,
-    private val connectivity: ConnectivityManager
+    private val connectivity: ConnectivityManager,
+    private val settingsRepository: SettingsRepository
 ) : ScreenModel {
 
     // 1. Estado para el dispositivo seleccionado (BottomSheet)
@@ -79,11 +81,14 @@ class HomeViewModel(
                 val currentDevices = repository.getAllServers().first()
 
                 if (currentDevices.isNotEmpty()) {
+                    // 2. Leemos el timeout configurado en los ajustes (fuera del async para eficiencia)
+                    val currentTimeout = settingsRepository.settings.value.pingTimeoutMs
+
                     val results = currentDevices.map { device ->
                         async {
                             val isReachable = try {
-                                // Funciona perfecto porque 'ip' está en la interfaz base Device
-                                connectivity.isReachable(device.ip)
+                                // 3. Le pasamos el timeout personalizado a tu función
+                                connectivity.isReachable(device.ip, currentTimeout)
                             } catch (e: Exception) {
                                 false
                             }

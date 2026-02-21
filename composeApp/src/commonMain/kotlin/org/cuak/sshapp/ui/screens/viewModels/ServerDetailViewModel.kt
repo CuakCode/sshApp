@@ -13,6 +13,7 @@ import org.cuak.sshapp.models.ProcessSortOption
 import org.cuak.sshapp.models.Device
 import org.cuak.sshapp.models.ServerMetrics
 import org.cuak.sshapp.repository.ServerRepository
+import org.cuak.sshapp.repository.SettingsRepository
 
 sealed class DetailUiState {
     object Idle : DetailUiState()
@@ -23,7 +24,8 @@ sealed class DetailUiState {
 
 class ServerDetailViewModel(
     private val repository: ServerRepository,
-    private val sshClient: SshClient
+    private val sshClient: SshClient,
+    private val settingsRepository: SettingsRepository
 ) : ScreenModel {
 
     // Cambiado de 'server' a 'device'
@@ -58,10 +60,25 @@ class ServerDetailViewModel(
         val currentDevice = device ?: return
         screenModelScope.launch {
             uiState = DetailUiState.Loading
-            // NOTA: Asegúrate de que SshClient.fetchMetrics acepta 'Device'
+
             val result = sshClient.fetchMetrics(currentDevice)
+
             uiState = result.fold(
-                onSuccess = { DetailUiState.Success(it) },
+                onSuccess = { metrics ->
+                    // --- AQUÍ ESTÁ LA MAGIA ---
+                    // 2. Leemos los días de retención configurados por el usuario
+                    val retentionDays = settingsRepository.settings.value.metricsRetentionDays
+
+                    // 3. Guardamos la métrica y limpiamos el historial antiguo en segundo plano
+                    repository.saveMetricsAndCleanOld(
+                        serverId = currentDevice.id,
+                        metrics = metrics,
+                        retentionDays = retentionDays
+                    )
+
+                    // 4. Actualizamos el estado de la UI para mostrar los gráficos
+                    DetailUiState.Success(metrics)
+                },
                 onFailure = { DetailUiState.Error(it.message ?: "Error") }
             )
         }
