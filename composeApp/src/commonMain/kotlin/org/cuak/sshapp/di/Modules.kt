@@ -5,41 +5,42 @@ import org.cuak.sshapp.database.createDatabase
 import org.cuak.sshapp.repository.ServerRepository
 import org.cuak.sshapp.ui.screens.viewModels.HomeViewModel
 import org.cuak.sshapp.ui.screens.viewModels.ServerDetailViewModel
-// IMPORTANTE: Asegúrate de importar tu ConnectivityManager
 import org.cuak.sshapp.network.ConnectivityManager
 import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.module
 import org.cuak.sshapp.ui.screens.viewModels.FileManagerViewModel
-import org.cuak.sshapp.models.Device // Cambiado de Server a Device
+import org.cuak.sshapp.models.Device
 import org.cuak.sshapp.repository.SettingsRepository
 import org.cuak.sshapp.ui.screens.viewModels.SettingsViewModel
 
+// Importamos nuestra interfaz y la clase expect
+import org.cuak.sshapp.domain.security.EncryptionService
+import org.cuak.sshapp.domain.security.PlatformEncryptionService
+
 val commonModule = module {
-    // Base de datos
+    // 1. Base de datos
     single<ServerDatabase> { createDatabase(get()) }
 
-    // Repositorio
-    singleOf(::ServerRepository)
+    // 2. SEGURIDAD: Inyectamos directamente la clase multiplataforma
+    single<EncryptionService> { PlatformEncryptionService() }
 
+    // 3. Repositorios
+    singleOf(::ServerRepository) // Automáticamente cogerá el EncryptionService de arriba
     singleOf(::SettingsRepository)
 
-    // --- CORRECCIÓN: REGISTRAR CONNECTIVITY MANAGER ---
+    // 4. Servicios
     single { ConnectivityManager() }
 
+    // 5. ViewModels
     factory { SettingsViewModel(get()) }
-
-    // HomeViewModel: Ahora recibe 2 parámetros (Repository, ConnectivityManager)
     factory { HomeViewModel(get(), get(), get()) }
-
-    // ServerDetailViewModel
     factory { ServerDetailViewModel(get(), get(), get()) }
 
-    // --- ACTUALIZADO A DEVICE ---
     factory { (device: Device) ->
         FileManagerViewModel(
-            device = device,         // Asignamos el device
-            sshClient = get(),       // Inyecta SshClient automáticamente
-            localFileSystem = get()  // Inyecta LocalFileSystem automáticamente
+            device = device,
+            sshClient = get(),
+            localFileSystem = get()
         )
     }
 }

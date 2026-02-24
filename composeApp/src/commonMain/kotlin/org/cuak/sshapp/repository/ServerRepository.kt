@@ -12,8 +12,12 @@ import org.cuak.sshapp.models.Camera
 import org.cuak.sshapp.models.ServerMetrics
 import org.cuak.sshapp.models.ServerStatus
 import org.cuak.sshapp.utils.getCurrentTimeMillis
+import org.cuak.sshapp.domain.security.EncryptionService // <-- Importamos nuestra interfaz de seguridad
 
-class ServerRepository(private val database: ServerDatabase) {
+class ServerRepository(
+    private val database: ServerDatabase,
+    private val encryptionService: EncryptionService // <-- Inyectamos vía Koin
+) {
     private val queries = database.serverDatabaseQueries
 
     // Obtenemos un Flow de 'Device' (que por debajo serán instancias de Server o Camera)
@@ -28,13 +32,16 @@ class ServerRepository(private val database: ServerDatabase) {
 
     fun addServer(device: Device) {
         database.transaction {
+            // Ciframos la contraseña antes de guardarla
+            val securePassword = encryptionService.encrypt(device.password)
+
             // 1. Siempre insertamos los datos base en ServerEntity
             queries.insertServer(
                 name = device.name,
                 ip = device.ip,
                 port = device.port,
                 username = device.username,
-                password = device.password,
+                password = securePassword, // <-- Insertamos cifrada
                 sshKeyPath = device.sshKeyPath,
                 iconName = device.iconName
             )
@@ -54,13 +61,16 @@ class ServerRepository(private val database: ServerDatabase) {
 
     fun updateServer(device: Device) {
         database.transaction {
+            // Ciframos la contraseña antes de actualizarla
+            val securePassword = encryptionService.encrypt(device.password)
+
             // 1. Actualizamos los datos base en ServerEntity
             queries.updateServer(
                 name = device.name,
                 ip = device.ip,
                 port = device.port,
                 username = device.username,
-                password = device.password,
+                password = securePassword, // <-- Actualizamos cifrada
                 sshKeyPath = device.sshKeyPath,
                 iconName = device.iconName,
                 id = device.id
@@ -92,6 +102,9 @@ class ServerRepository(private val database: ServerDatabase) {
     // ==========================================
 
     private fun org.cuak.sshapp.SelectAllDevices.toDomain(): Device {
+        // Desciframos la contraseña al leer de la BD
+        val plainTextPassword = encryptionService.decrypt(password)
+
         return if (camera_protocol != null) {
             Camera(
                 id = id,
@@ -99,7 +112,7 @@ class ServerRepository(private val database: ServerDatabase) {
                 ip = ip,
                 port = port,
                 username = username,
-                password = password,
+                password = plainTextPassword, // <-- Pasamos el texto plano
                 sshKeyPath = sshKeyPath,
                 iconName = iconName,
                 status = ServerStatus.UNKNOWN,
@@ -114,7 +127,7 @@ class ServerRepository(private val database: ServerDatabase) {
                 ip = ip,
                 port = port,
                 username = username,
-                password = password,
+                password = plainTextPassword, // <-- Pasamos el texto plano
                 sshKeyPath = sshKeyPath,
                 iconName = iconName,
                 status = ServerStatus.UNKNOWN
@@ -123,6 +136,9 @@ class ServerRepository(private val database: ServerDatabase) {
     }
 
     private fun org.cuak.sshapp.SelectDeviceById.toDomain(): Device {
+        // Desciframos la contraseña al leer de la BD
+        val plainTextPassword = encryptionService.decrypt(password)
+
         return if (camera_protocol != null) {
             Camera(
                 id = id,
@@ -130,7 +146,7 @@ class ServerRepository(private val database: ServerDatabase) {
                 ip = ip,
                 port = port,
                 username = username,
-                password = password,
+                password = plainTextPassword, // <-- Pasamos el texto plano
                 sshKeyPath = sshKeyPath,
                 iconName = iconName,
                 status = ServerStatus.UNKNOWN,
@@ -145,7 +161,7 @@ class ServerRepository(private val database: ServerDatabase) {
                 ip = ip,
                 port = port,
                 username = username,
-                password = password,
+                password = plainTextPassword, // <-- Pasamos el texto plano
                 sshKeyPath = sshKeyPath,
                 iconName = iconName,
                 status = ServerStatus.UNKNOWN

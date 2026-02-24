@@ -132,7 +132,7 @@ fun ServerFormDialog(
                             text = {
                                 Column {
                                     Text("Servidor Linux", style = MaterialTheme.typography.bodyLarge)
-                                    Text("VPS, Raspberry Pi, Ubuntu...", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+                                    Text("VPS, Raspberry Pi, Debian...", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
                                 }
                             },
                             onClick = { isCameraType = false; typeExpanded = false },
@@ -142,7 +142,7 @@ fun ServerFormDialog(
                         DropdownMenuItem(
                             text = {
                                 Column {
-                                    Text("Cámara Yi Hack", style = MaterialTheme.typography.bodyLarge)
+                                    Text("Cámara", style = MaterialTheme.typography.bodyLarge)
                                     Text("Yi Home/Kami (Allwinner/MStar)", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
                                 }
                             },
