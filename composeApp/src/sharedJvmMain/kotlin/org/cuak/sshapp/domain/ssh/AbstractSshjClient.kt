@@ -1,5 +1,6 @@
 package org.cuak.sshapp.domain.ssh
 
+import io.github.vinceglb.filekit.utils.toPath
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -18,6 +19,7 @@ import net.schmizz.sshj.userauth.method.ChallengeResponseProvider
 import net.schmizz.sshj.userauth.password.Resource
 import net.schmizz.sshj.xfer.FileSystemFile
 import net.schmizz.sshj.xfer.TransferListener
+import okio.FileSystem
 import org.cuak.sshapp.models.Device
 import org.cuak.sshapp.models.Camera
 import org.cuak.sshapp.models.PortInfo

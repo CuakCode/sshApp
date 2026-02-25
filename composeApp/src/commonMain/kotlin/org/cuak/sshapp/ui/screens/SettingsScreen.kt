@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -67,10 +69,27 @@ class SettingsScreen : Screen {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Tema Oscuro", style = MaterialTheme.typography.bodyLarge)
+                    Text("Tema global", style = MaterialTheme.typography.bodyLarge)
                     Switch(
                         checked = settings.isDarkTheme,
-                        onCheckedChange = { viewModel.toggleTheme(it) }
+                        onCheckedChange = { viewModel.toggleTheme(it) },
+                        thumbContent = if (settings.isDarkTheme) {
+                            {
+                                Icon(
+                                    imageVector = Icons.Filled.DarkMode,
+                                    contentDescription = "Modo Oscuro",
+                                    modifier = Modifier.size(SwitchDefaults.IconSize)
+                                )
+                            }
+                        } else {
+                            {
+                                Icon(
+                                    imageVector = Icons.Filled.LightMode,
+                                    contentDescription = "Modo Claro",
+                                    modifier = Modifier.size(SwitchDefaults.IconSize)
+                                )
+                            }
+                        }
                     )
                 }
 
