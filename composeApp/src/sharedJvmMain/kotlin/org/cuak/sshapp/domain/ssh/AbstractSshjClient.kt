@@ -336,7 +336,6 @@ abstract class AbstractSshjClient : SshClient {
             val port = parts[1].toIntOrNull() ?: device.port
             connect(ip, port)
         } else {
-            // Utilizamos la propiedad port del Device en lugar de hardcodear el 22
             connect(device.ip, device.port)
         }
 
