@@ -3,6 +3,7 @@
   <img src="composeApp/src/androidMain/res/ic_launcher-web.png" width="300" alt="sshApp Logo">
   <h3>Aplicación Multiplataforma para la Gestión de Servidores y Cámaras</h3>
 </div>
+
 ## Descripción General
 
 **sshApp** es una aplicación multiplataforma desarrollada en **Kotlin Multiplatform (KMP)** mediante la interfaz gráfica reactiva **Compose Multiplatform**. Su principal propósito es optimizar el trabajo de los administradores de sistemas, permitiendo agrupar el control de servidores Linux y cámaras de seguridad bajo una misma interfaz intuitiva.
