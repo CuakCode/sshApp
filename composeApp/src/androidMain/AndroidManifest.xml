@@ -20,7 +20,9 @@
         <activity
             android:exported="true"
             android:name=".MainActivity"
-            android:windowSoftInputMode="adjustResize"> <intent-filter>
+            android:windowSoftInputMode="adjustResize"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode">
+            <intent-filter>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
         </intent-filter>
