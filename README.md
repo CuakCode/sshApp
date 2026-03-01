@@ -1,4 +1,4 @@
-# sshApp - Aplicación Multiplataforma para la Gestión de Servidores y Cámaras
+# <img src="composeApp/src/androidMain/res/ic_launcher-web.png" width="50" alt="sshApp Logo" valign="middle"> sshApp - Aplicación Multiplataforma para la Gestión de Servidores y Cámaras
 
 ## Descripción General
 
