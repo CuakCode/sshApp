@@ -1,4 +1,4 @@
-// composeApp/src/commonMain/kotlin/org/cuak/sshapp/ui/screens/tabs/MonitorTabContent.kt
+
 package org.cuak.sshapp.ui.screens.tabs
 
 import androidx.compose.foundation.BorderStroke
@@ -53,7 +53,7 @@ fun MonitorTabContent(
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // Rendimiento
+                    
                     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Text("Rendimiento", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
@@ -66,7 +66,7 @@ fun MonitorTabContent(
                         }
                     }
 
-                    // Almacenamiento
+                    
                     if (validDisks.isNotEmpty()) {
                         ElevatedCard(modifier = Modifier.fillMaxWidth()) {
                             Column(modifier = Modifier.padding(16.dp)) {
@@ -81,7 +81,7 @@ fun MonitorTabContent(
                         }
                     }
 
-                    // Puertos
+                    
                     if (state.metrics.openPorts.isNotEmpty()) {
                         ElevatedCard(modifier = Modifier.fillMaxWidth()) {
                             Column(modifier = Modifier.padding(16.dp)) {
@@ -92,7 +92,7 @@ fun MonitorTabContent(
                         }
                     }
 
-                    // Sensores
+                    
                     if (validTemps.isNotEmpty()) {
                         ElevatedCard(modifier = Modifier.fillMaxWidth()) {
                             Column(modifier = Modifier.padding(16.dp)) {
@@ -116,7 +116,7 @@ fun MonitorTabContent(
     }
 }
 
-// -- Helpers Visuales --
+
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -157,7 +157,7 @@ fun DiskUsageBar(label: String, percentage: Double) {
             Text("${percentage.toInt()}%", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
         }
         Spacer(modifier = Modifier.height(4.dp))
-        // CORRECCIÓN: 'progress' espera un Float directo, no una lambda
+        
         LinearProgressIndicator(
             progress = (percentage / 100.0).toFloat().coerceIn(0f, 1f),
             modifier = Modifier.fillMaxWidth().height(8.dp),

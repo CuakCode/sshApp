@@ -45,7 +45,7 @@ class SettingsScreen : Screen {
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // 1. Días de almacenamiento
+                
                 OutlinedTextField(
                     value = settings.metricsRetentionDays.toString(),
                     onValueChange = { it.toIntOrNull()?.let { days -> viewModel.updateRetentionDays(days) } },
@@ -54,7 +54,7 @@ class SettingsScreen : Screen {
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // 2. Delay de ping
+                
                 OutlinedTextField(
                     value = settings.pingTimeoutMs.toString(),
                     onValueChange = { it.toIntOrNull()?.let { ms -> viewModel.updatePingTimeout(ms) } },
@@ -63,7 +63,7 @@ class SettingsScreen : Screen {
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // 3. Tema
+                
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -93,16 +93,16 @@ class SettingsScreen : Screen {
                     )
                 }
 
-                // 4. Idioma (Deshabilitado)
+                
                 OutlinedTextField(
                     value = settings.language,
                     onValueChange = { },
                     label = { Text("Idioma") },
-                    enabled = false, // Fijo por defecto
+                    enabled = false, 
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // 5. Ruta de la base de datos
+                
                 OutlinedTextField(
                     value = settings.databasePath,
                     onValueChange = { viewModel.updateDatabasePath(it) },

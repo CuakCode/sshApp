@@ -42,8 +42,8 @@ fun FileManagerTabContent(viewModel: FileManagerViewModel) {
 
     Column(Modifier.fillMaxSize()) {
 
-        // --- Barra de Estado y Progreso Global ---
-        val currentProgress = transferProgress // Captura segura para evitar NPE
+        
+        val currentProgress = transferProgress 
         if (currentProgress != null) {
             Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.secondaryContainer).padding(8.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -65,9 +65,9 @@ fun FileManagerTabContent(viewModel: FileManagerViewModel) {
             )
         }
 
-        // --- Paneles de Archivos ---
+        
         Row(Modifier.weight(1f)) {
-            // PANEL LOCAL
+            
             FilePanel(
                 modifier = Modifier.weight(1f),
                 title = "Local",
@@ -87,7 +87,7 @@ fun FileManagerTabContent(viewModel: FileManagerViewModel) {
 
             VerticalDivider(modifier = Modifier.fillMaxHeight())
 
-            // PANEL REMOTO
+            
             FilePanel(
                 modifier = Modifier.weight(1f),
                 title = "Remoto",
@@ -98,7 +98,7 @@ fun FileManagerTabContent(viewModel: FileManagerViewModel) {
                 onSortChange = { viewModel.toggleRemoteSort(it) },
                 onUpClick = { viewModel.navigateRemoteUp() },
 
-                // CAMBIO AQUÍ: Usamos la nueva función openRemoteFile
+                
                 onItemClick = { file ->
                     viewModel.openRemoteFile(file)
                 },
@@ -125,7 +125,7 @@ private fun FilePanel(
     transferIcon: ImageVector
 ) {
     Column(modifier = modifier.padding(4.dp)) {
-        // Cabecera: Título y Ruta
+        
         Column(Modifier.padding(horizontal = 4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(title, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
@@ -139,10 +139,10 @@ private fun FilePanel(
 
         Spacer(Modifier.height(4.dp))
 
-        // --- Botones de Ordenación Responsivos ---
-        // Usamos BoxWithConstraints para saber el ancho real disponible de este panel
+        
+        
         BoxWithConstraints(Modifier.fillMaxWidth()) {
-            // Si el ancho del panel es menor a 280dp, usamos modo compacto (iconos)
+            
             val isCompact = maxWidth < 280.dp
 
             Row(
@@ -183,7 +183,7 @@ private fun FilePanel(
 
         HorizontalDivider(Modifier.padding(top = 8.dp))
 
-        // Lista de Archivos
+        
         LazyColumn(Modifier.fillMaxSize()) {
             items(files) { file ->
                 FileItemRow(file, { onItemClick(file) }, { onTransferClick(file) }, transferIcon)
@@ -210,14 +210,14 @@ fun SortChip(
         onClick = { onSortChange(option) },
         label = {
             if (isCompact) {
-                // Modo Compacto: Solo Icono de categoría
+                
                 Icon(
                     imageVector = icon,
                     contentDescription = label,
                     modifier = Modifier.size(16.dp)
                 )
             } else {
-                // Modo Normal: Texto
+                
                 Text(label, style = MaterialTheme.typography.labelSmall)
             }
         },

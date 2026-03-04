@@ -7,6 +7,6 @@ import androidx.compose.ui.Modifier
 expect fun RtspVideoPlayer(
     url: String,
     modifier: Modifier = Modifier,
-    // Opcional: callback para errores o estado
+    
     onStatusChange: (String) -> Unit = {}
 )

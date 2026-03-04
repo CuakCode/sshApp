@@ -42,7 +42,7 @@ fun ProcessesTabContent(
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
 
-            // Barra superior: Contador y botón de refrescar
+            
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -62,14 +62,14 @@ fun ProcessesTabContent(
 
             Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
-            // Lista de procesos
+            
             if (isLoading && processes.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    // Cabecera Fija (Sticky)
+                    
                     stickyHeader {
                         ProcessHeaderRow(sortOption, onSort)
                     }
@@ -95,13 +95,13 @@ fun ProcessHeaderRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(50.dp) // Altura fija para asegurar área de click uniforme
-            .background(MaterialTheme.colorScheme.surface) // Fondo opaco para sticky
+            .height(50.dp) 
+            .background(MaterialTheme.colorScheme.surface) 
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Celdas de cabecera con pesos y alineación específica
-        // PID: Izquierda
+        
+        
         HeaderCell(
             text = "PID",
             weight = 0.15f,
@@ -109,7 +109,7 @@ fun ProcessHeaderRow(
             isSelected = currentSort == ProcessSortOption.PID,
             onClick = { onSort(ProcessSortOption.PID) }
         )
-        // Nombre: Izquierda
+        
         HeaderCell(
             text = "Nombre",
             weight = 0.45f,
@@ -117,7 +117,7 @@ fun ProcessHeaderRow(
             isSelected = currentSort == ProcessSortOption.NAME,
             onClick = { onSort(ProcessSortOption.NAME) }
         )
-        // CPU: Derecha (números)
+        
         HeaderCell(
             text = "CPU%",
             weight = 0.2f,
@@ -125,7 +125,7 @@ fun ProcessHeaderRow(
             isSelected = currentSort == ProcessSortOption.CPU,
             onClick = { onSort(ProcessSortOption.CPU) }
         )
-        // MEM: Derecha (números)
+        
         HeaderCell(
             text = "MEM%",
             weight = 0.2f,
@@ -145,12 +145,12 @@ fun RowScope.HeaderCell(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
-    // Usamos un Box que llene la altura para que el click sea fácil
+    
     Box(
         modifier = Modifier
             .weight(weight)
             .fillMaxHeight()
-            .clickable(onClick = onClick) // Click en el contenedor
+            .clickable(onClick = onClick) 
             .padding(vertical = 4.dp),
         contentAlignment = align
     ) {
@@ -161,7 +161,7 @@ fun RowScope.HeaderCell(
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                 color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
             )
-            // Flecha indicadora de orden
+            
             if (isSelected) {
                 Spacer(modifier = Modifier.width(2.dp))
                 Icon(
@@ -183,17 +183,17 @@ fun ProcessRow(proc: ProcessInfo) {
             .padding(vertical = 12.dp, horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // PID
+        
         Text(
             text = proc.pid,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.secondary,
             modifier = Modifier.weight(0.15f),
             fontFamily = FontFamily.Monospace,
-            textAlign = TextAlign.Start // Aseguramos alineación izquierda
+            textAlign = TextAlign.Start 
         )
 
-        // Nombre y Usuario
+        
         Column(modifier = Modifier.weight(0.45f)) {
             Text(
                 text = proc.command.split(" ").first(),
@@ -210,12 +210,12 @@ fun ProcessRow(proc: ProcessInfo) {
             )
         }
 
-        // CPU Badge
+        
         Box(modifier = Modifier.weight(0.2f), contentAlignment = Alignment.CenterEnd) {
             UsageBadge(proc.cpuUsage, thresholdWarning = 20.0, thresholdError = 50.0)
         }
 
-        // MEM Badge
+        
         Box(modifier = Modifier.weight(0.2f), contentAlignment = Alignment.CenterEnd) {
             UsageBadge(proc.memUsage, thresholdWarning = 20.0, thresholdError = 50.0)
         }
@@ -232,11 +232,11 @@ fun UsageBadge(value: Double, thresholdWarning: Double, thresholdError: Double) 
 
     val isHigh = value >= thresholdWarning
 
-    // Formateamos siempre a 2 decimales (ej: 0.0 -> "0.00%", 5.2 -> "5.20%")
+    
     val displayText = "${formatDecimal(value, 2)}%"
 
     if (isHigh) {
-        // Estilo "Alerta" con fondo
+        
         Surface(
             color = color.copy(alpha = 0.15f),
             shape = RoundedCornerShape(6.dp),
@@ -251,24 +251,24 @@ fun UsageBadge(value: Double, thresholdWarning: Double, thresholdError: Double) 
             )
         }
     } else {
-        // Estilo "Normal"
+        
         Text(
             text = displayText,
             style = MaterialTheme.typography.bodyMedium,
             color = color.copy(alpha = 0.8f),
-            // Usamos fuente monoespaciada para que los números se alineen bien verticalmente
+            
             fontFamily = FontFamily.Monospace
         )
     }
 }
 
-// Función helper para formatear decimales en KMP (Common)
+
 fun formatDecimal(value: Double, decimals: Int): String {
     val factor = 10.0.pow(decimals)
     val rounded = (value * factor).roundToInt() / factor
     val string = rounded.toString()
 
-    // Asegurar que siempre tenga los decimales pedidos (rellenar con ceros)
+    
     val parts = string.split(".")
     val integerPart = parts[0]
     val fractionalPart = if (parts.size > 1) parts[1] else ""

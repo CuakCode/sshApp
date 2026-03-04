@@ -27,15 +27,15 @@ import org.cuak.sshapp.models.Device
 import org.cuak.sshapp.models.ServerStatus
 import org.cuak.sshapp.ui.theme.*
 
-// ui/components/ServerCard.kt
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ServerCard(
-    device: Device, // Ahora acepta la interfaz base
+    device: Device, 
     onClick: () -> Unit,
     onLongClick: () -> Unit
 ) {
-    // Leemos las propiedades comunes de la interfaz Device
+    
     val statusColor = if (device.status == ServerStatus.ONLINE) StatusSuccess else StatusError
     val icon = getIconByName(device.iconName)
 
@@ -68,9 +68,9 @@ fun ServerCard(
                 text = device.name,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center, // Centra el texto si ocupa varias líneas
-                maxLines = 3, // Permite hasta 3 líneas
-                overflow = TextOverflow.Ellipsis // Añade "..." si el nombre es extremadamente largo
+                textAlign = TextAlign.Center, 
+                maxLines = 3, 
+                overflow = TextOverflow.Ellipsis 
             )
             Text(
                 text = device.ip,
@@ -82,9 +82,9 @@ fun ServerCard(
 }
 
 fun getIconByName(name: String): ImageVector {
-    // Usamos lowercase para evitar problemas si se guarda en mayúsculas por error
+    
     return when (name.lowercase()) {
-        // --- Servidores / Redes ---
+        
         "dns" -> Icons.Default.Dns
         "computer" -> Icons.Default.Computer
         "router" -> Icons.Default.Router
@@ -92,16 +92,16 @@ fun getIconByName(name: String): ImageVector {
         "storage" -> Icons.Default.Storage
         "memory" -> Icons.Default.Memory
 
-        // --- Cámaras / Video / Seguridad ---
+        
         "videocam" -> Icons.Default.Videocam
         "camera_alt" -> Icons.Default.CameraAlt
         "security" -> Icons.Default.Security
         "cast_connected" -> Icons.Default.CastConnected
 
-        // --- Otros ---
+        
         "smart_toy" -> Icons.Default.SmartToy
 
-        // Fallback por defecto si el nombre no existe o es antiguo
+        
         else -> Icons.Default.Dns
     }
 }

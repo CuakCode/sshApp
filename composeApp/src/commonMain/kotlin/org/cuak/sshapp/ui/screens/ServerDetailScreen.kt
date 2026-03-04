@@ -42,8 +42,8 @@ data class ServerDetailScreen(val serverId: Long) : Screen {
 
         val device = viewModel.device
 
-        // --- 1. LÓGICA DE PESTAÑAS DINÁMICAS ---
-        // Comprobamos directamente si la clase de 'device' es una 'Camera'
+        
+        
         val isCamera = device is Camera
 
         val tabs = remember(isCamera) {
@@ -137,8 +137,8 @@ data class ServerDetailScreen(val serverId: Long) : Screen {
 
                     when (currentTabTitle) {
                         "Cámara" -> {
-                            // Smart cast maravilloso de Kotlin: como ya sabemos que debe ser una Camera, lo casteamos.
-                            // Si device es nulo o no es Camera, simplemente no pinta el reproductor.
+                            
+                            
                             (device as? Camera)?.let { cam ->
                                 Box(
                                     modifier = Modifier
@@ -147,7 +147,7 @@ data class ServerDetailScreen(val serverId: Long) : Screen {
                                     contentAlignment = Alignment.Center
                                 ) {
                                     RtspVideoPlayer(
-                                        url = cam.rtspUrl, // Acceso directo a rtspUrl gracias al cast
+                                        url = cam.rtspUrl, 
                                         modifier = Modifier.fillMaxSize(),
                                         onStatusChange = { status ->
                                             println("Estado cámara: $status")
@@ -181,7 +181,7 @@ data class ServerDetailScreen(val serverId: Long) : Screen {
                         }
                         "Archivos" -> {
                             if (device != null) {
-                                // NOTA: Asegúrate de que FileManagerViewModel acepta 'Device' en parametersOf
+                                
                                 val fileManagerViewModel = koinScreenModel<FileManagerViewModel> { parametersOf(device) }
                                 FileManagerTabContent(viewModel = fileManagerViewModel)
                             } else {

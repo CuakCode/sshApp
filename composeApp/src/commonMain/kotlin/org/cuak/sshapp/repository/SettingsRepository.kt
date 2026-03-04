@@ -14,10 +14,10 @@ data class AppSettings(
 )
 
 class SettingsRepository {
-    // 1. Cambiamos el nombre a 'preferences' para evitar el conflicto
+    
     private val preferences = Settings()
 
-    // 2. Leemos usando 'preferences'
+    
     private val _settingsState = MutableStateFlow(
         AppSettings(
             metricsRetentionDays = preferences.getInt("metricsRetentionDays", 7),
@@ -28,11 +28,11 @@ class SettingsRepository {
         )
     )
 
-    // 3. Este es el estado que observa la UI
+    
     val settings: StateFlow<AppSettings> = _settingsState.asStateFlow()
 
     fun updateSettings(newSettings: AppSettings) {
-        // 4. Guardamos usando 'preferences'
+        
         preferences.putInt("metricsRetentionDays", newSettings.metricsRetentionDays)
         preferences.putInt("pingTimeoutMs", newSettings.pingTimeoutMs)
         preferences.putBoolean("isDarkTheme", newSettings.isDarkTheme)

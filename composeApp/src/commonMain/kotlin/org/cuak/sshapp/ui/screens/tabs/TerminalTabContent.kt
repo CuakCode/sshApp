@@ -28,7 +28,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
-// Asegúrate de tener este import
+
 import androidx.compose.foundation.layout.imePadding
 
 import org.cuak.sshapp.utils.TerminalBuffer
@@ -51,7 +51,7 @@ fun TerminalTabContent(
         buffer.toAnnotatedString()
     }
 
-    // Auto-scroll: Se activa cuando cambia el texto O cuando cambia el tamaño de la ventana (teclado)
+    
     LaunchedEffect(processedText, scrollState.maxValue) {
         scrollState.animateScrollTo(scrollState.maxValue)
     }
@@ -60,8 +60,8 @@ fun TerminalTabContent(
         onStart()
         delay(300)
         focusRequester.requestFocus()
-        // Opcional: Mostrar teclado automáticamente al entrar
-        // keyboardController?.show()
+        
+        
     }
 
     Box(
@@ -76,9 +76,9 @@ fun TerminalTabContent(
                     }
                 )
             }
-        // Eliminamos el padding general de 8.dp aquí para manejarlo mejor dentro
+        
     ) {
-        // --- 1. MOTOR DE ENTRADA (INVISIBLE) ---
+        
         BasicTextField(
             value = inputBuffer,
             onValueChange = { newValue ->
@@ -122,20 +122,20 @@ fun TerminalTabContent(
             keyboardOptions = KeyboardOptions(autoCorrect = false, keyboardType = KeyboardType.Ascii, imeAction = ImeAction.None)
         )
 
-        // --- 2. INTERFAZ VISUAL ---
+        
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                // --- CAMBIO CLAVE ---
-                // systemBarsPadding asegura que no se meta bajo la barra de estado
-                // imePadding asegura que el contenido suba con el teclado
+                
+                
+                
                 .systemBarsPadding()
                 .imePadding()
-                .padding(8.dp) // Padding visual interno
+                .padding(8.dp) 
         ) {
             Box(
                 modifier = Modifier
-                    .weight(1f) // Esto hace que la terminal ocupe todo el espacio disponible
+                    .weight(1f) 
                     .fillMaxWidth()
                     .background(Color.Black, RoundedCornerShape(4.dp))
                     .padding(4.dp)
@@ -154,7 +154,7 @@ fun TerminalTabContent(
                 }
             }
 
-            // Barra de Botones
+            
             Row(
                 modifier = Modifier
                     .fillMaxWidth()

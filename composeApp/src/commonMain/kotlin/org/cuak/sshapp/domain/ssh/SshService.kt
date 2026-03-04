@@ -19,13 +19,13 @@ interface SshClient {
         device: Device,
         localPath: String,
         remotePath: String,
-        onProgress: (Float) -> Unit // Float 0.0 a 1.0
+        onProgress: (Float) -> Unit 
     ): Result<Unit>
 
     suspend fun downloadFile(
         device: Device,
         remotePath: String,
         localPath: String,
-        onProgress: (Float) -> Unit // Float 0.0 a 1.0
+        onProgress: (Float) -> Unit 
     ): Result<Unit>
 }

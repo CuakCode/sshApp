@@ -7,7 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Settings // <-- Importamos el icono de Ajustes
+import androidx.compose.material.icons.filled.Settings 
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -34,11 +34,11 @@ class HomeScreen : Screen {
         HomeScreenContent(
             viewModel = viewModel,
             onDeviceClick = { device ->
-                // Ambos tienen ID, así que la navegación se mantiene igual
+                
                 navigator.push(ServerDetailScreen(serverId = device.id))
             },
             onSettingsClick = {
-                // Navegamos a la nueva pantalla de configuración
+                
                 navigator.push(SettingsScreen())
             }
         )
@@ -50,7 +50,7 @@ class HomeScreen : Screen {
 private fun HomeScreenContent(
     viewModel: HomeViewModel,
     onDeviceClick: (Device) -> Unit,
-    onSettingsClick: () -> Unit // <-- Añadimos el callback aquí
+    onSettingsClick: () -> Unit 
 ) {
     val state by viewModel.uiState.collectAsState()
 
@@ -67,7 +67,7 @@ private fun HomeScreenContent(
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background
                 ),
-                // --- AÑADIMOS EL BOTÓN DE AJUSTES AQUÍ ---
+                
                 actions = {
                     IconButton(onClick = onSettingsClick) {
                         Icon(
@@ -137,7 +137,7 @@ private fun HomeScreenContent(
             }
         }
 
-        // Bottom Sheet de Opciones
+        
         if (selectedDevice != null) {
             ModalBottomSheet(
                 onDismissRequest = { viewModel.dismissOptions() },
@@ -150,7 +150,7 @@ private fun HomeScreenContent(
             }
         }
 
-        // Diálogo de Edición
+        
         if (showEditDialog && selectedDevice != null) {
             ServerFormDialog(
                 device = selectedDevice,
@@ -165,7 +165,7 @@ private fun HomeScreenContent(
             )
         }
 
-        // Diálogo de Añadir
+        
         if (showAddDialog) {
             ServerFormDialog(
                 device = null,

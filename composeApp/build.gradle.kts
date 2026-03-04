@@ -1,5 +1,7 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.io.FileInputStream
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -20,7 +22,7 @@ sqldelight {
 }
 
 kotlin {
-    // 1. IMPORTANTE: Esto asegura que iosMain y otros source sets se creen automáticamente
+
     applyDefaultHierarchyTemplate()
 
     androidTarget {
@@ -29,16 +31,6 @@ kotlin {
         }
     }
 
-    // Configuración de targets iOS
-    listOf(
-        iosArm64(),
-        iosSimulatorArm64()
-    ).forEach { iosTarget ->
-        iosTarget.binaries.framework {
-            baseName = "ComposeApp"
-            isStatic = true
-        }
-    }
 
     jvm()
 
@@ -128,25 +120,26 @@ kotlin {
             }
         }
 
-        // iosMain ya existe gracias a applyDefaultHierarchyTemplate(), usamos 'getting'
-        val iosMain by getting {
-            dependencies {
-                implementation(libs.sqldelight.native.driver)
-            }
-        }
-
-        val commonTest by getting {
-            dependencies {
-                implementation(libs.kotlin.test)
-            }
-        }
     }
 }
 
+val keystorePropertiesFile = rootProject.file("local.properties")
+val keystoreProperties = Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+}
 android {
     namespace = "org.cuak.sshapp"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
+    signingConfigs {
+        create("release") {
+            keyAlias = keystoreProperties["KEY_ALIAS"] as String? ?: ""
+            keyPassword = keystoreProperties["KEY_PASSWORD"] as String? ?: ""
+            storeFile = keystoreProperties["KEYSTORE_FILE"]?.let { file(it as String) }
+            storePassword = keystoreProperties["KEYSTORE_PASSWORD"] as String? ?: ""
+        }
+    }
     defaultConfig {
         applicationId = "org.cuak.sshapp"
         minSdk = libs.versions.android.minSdk.get().toInt()
@@ -162,6 +155,7 @@ android {
     buildTypes {
         getByName("release") {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
         }
     }
     compileOptions {
@@ -177,8 +171,11 @@ dependencies {
 compose.desktop {
     application {
         mainClass = "org.cuak.sshapp.MainKt"
+        buildTypes.release.proguard {
+            isEnabled.set(false)
+        }
         nativeDistributions {
-            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
+            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb, TargetFormat.AppImage)
             packageName = "org.cuak.sshapp"
             packageVersion = "1.0.0"
         }

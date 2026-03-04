@@ -27,11 +27,11 @@ import org.cuak.sshapp.ui.components.getIconByName
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServerFormDialog(
-    device: Device? = null, // Ahora usamos la interfaz base
+    device: Device? = null, 
     onDismiss: () -> Unit,
-    onConfirm: (Device) -> Unit // Devolvemos la interfaz base
+    onConfirm: (Device) -> Unit 
 ) {
-    // --- ESTADOS COMUNES ---
+    
     var name by remember { mutableStateOf(device?.name ?: "") }
     var ip by remember { mutableStateOf(device?.ip ?: "") }
     var port by remember { mutableStateOf(device?.port?.toString() ?: "22") }
@@ -40,30 +40,30 @@ fun ServerFormDialog(
     var sshKeyPath by remember { mutableStateOf(device?.sshKeyPath ?: "") }
     var passwordVisible by remember { mutableStateOf(false) }
 
-    // --- ESTADOS DE TIPO Y UI ---
-    // Determinamos si es cámara comprobando la clase del objeto inicial
+    
+    
     var isCameraType by remember { mutableStateOf(device is Camera) }
     var selectedIcon by remember { mutableStateOf(device?.iconName ?: "dns") }
 
-    // Control de dropdowns
+    
     var typeExpanded by remember { mutableStateOf(false) }
     var iconExpanded by remember { mutableStateOf(false) }
 
-    // --- ESTADOS ESPECÍFICOS DE CÁMARA ---
-    // Intentamos castear el device inicial a Camera para sacar sus valores si los tiene
+    
+    
     val initialCamera = device as? Camera
     var cameraProtocol by remember { mutableStateOf(initialCamera?.cameraProtocol ?: "RTSP") }
     var cameraPort by remember { mutableStateOf(initialCamera?.cameraPort?.toString() ?: "8554") }
     var cameraStream by remember { mutableStateOf(initialCamera?.cameraStream ?: "ch0_0.h264") }
 
-    // Lista de iconos disponibles
+    
     val iconOptions = listOf(
         "dns", "videocam", "camera_alt", "security", "cast_connected",
         "storage", "computer", "router", "cloud", "memory", "smart_toy"
     )
 
-    // --- LÓGICA AUTOMÁTICA ---
-    // Si cambiamos a CÁMARA y es un dispositivo nuevo, sugerimos icono
+    
+    
     LaunchedEffect(isCameraType) {
         if (isCameraType && device == null) {
             if (selectedIcon == "dns") selectedIcon = "videocam"
@@ -72,7 +72,7 @@ fun ServerFormDialog(
         }
     }
 
-    // --- FILE PICKER (Common) ---
+    
     val launcher = rememberFilePickerLauncher(
         type = FileKitType.File(extensions = listOf("pem", "key", "ppk", "pub")),
         title = "Seleccionar Clave Privada"
@@ -101,7 +101,7 @@ fun ServerFormDialog(
 
                 HorizontalDivider()
 
-                // --- 1. SELECTOR DE TIPO ---
+                
                 ExposedDropdownMenuBox(
                     expanded = typeExpanded,
                     onExpandedChange = { typeExpanded = !typeExpanded }
@@ -152,7 +152,7 @@ fun ServerFormDialog(
                     }
                 }
 
-                // --- 2. SELECTOR DE ICONO ---
+                
                 ExposedDropdownMenuBox(
                     expanded = iconExpanded,
                     onExpandedChange = { iconExpanded = !iconExpanded }
@@ -180,7 +180,7 @@ fun ServerFormDialog(
                     }
                 }
 
-                // --- 3. CAMPOS COMUNES ---
+                
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
@@ -246,7 +246,7 @@ fun ServerFormDialog(
                     }
                 )
 
-                // --- 4. CAMPOS ESPECÍFICOS DE CÁMARA ---
+                
                 if (isCameraType) {
                     Card(
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
@@ -276,7 +276,7 @@ fun ServerFormDialog(
                                 )
                             }
 
-                            // Selector de Calidad (Main/Sub Stream)
+                            
                             var expandedStream by remember { mutableStateOf(false) }
                             Box(modifier = Modifier.fillMaxWidth()) {
                                 OutlinedTextField(
@@ -311,7 +311,7 @@ fun ServerFormDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // --- 5. BOTONES DE ACCIÓN ---
+                
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End,
@@ -323,8 +323,8 @@ fun ServerFormDialog(
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
                         onClick = {
-                            // AQUÍ ESTÁ LA MAGIA:
-                            // Instanciamos el objeto concreto en función del tipo seleccionado
+                            
+                            
                             val finalDevice = if (isCameraType) {
                                 Camera(
                                     id = device?.id ?: 0,

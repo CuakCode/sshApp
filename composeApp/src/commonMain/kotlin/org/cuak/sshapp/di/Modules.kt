@@ -13,25 +13,25 @@ import org.cuak.sshapp.models.Device
 import org.cuak.sshapp.repository.SettingsRepository
 import org.cuak.sshapp.ui.screens.viewModels.SettingsViewModel
 
-// Importamos nuestra interfaz y la clase expect
+
 import org.cuak.sshapp.domain.security.EncryptionService
 import org.cuak.sshapp.domain.security.PlatformEncryptionService
 
 val commonModule = module {
-    // 1. Base de datos
+    
     single<ServerDatabase> { createDatabase(get()) }
 
-    // 2. SEGURIDAD: Inyectamos directamente la clase multiplataforma
+    
     single<EncryptionService> { PlatformEncryptionService() }
 
-    // 3. Repositorios
-    singleOf(::ServerRepository) // Automáticamente cogerá el EncryptionService de arriba
+    
+    singleOf(::ServerRepository) 
     singleOf(::SettingsRepository)
 
-    // 4. Servicios
+    
     single { ConnectivityManager() }
 
-    // 5. ViewModels
+    
     factory { SettingsViewModel(get()) }
     factory { HomeViewModel(get(), get(), get()) }
     factory { ServerDetailViewModel(get(), get(), get()) }

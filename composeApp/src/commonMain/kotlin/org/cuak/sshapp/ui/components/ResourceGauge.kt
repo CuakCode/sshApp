@@ -17,11 +17,11 @@ fun ResourceGauge(
     percentage: Double,
     modifier: Modifier = Modifier
 ) {
-    // Definición de colores según los umbrales solicitados
+    
     val color = when {
-        percentage < 60.0 -> StatusSuccess // Verde: Menos del 60%
-        percentage <= 80.0 -> StatusWarning // Amarillo: Entre 60% y 80%
-        else -> StatusError // Rojo: Superior al 80%
+        percentage < 60.0 -> StatusSuccess 
+        percentage <= 80.0 -> StatusWarning 
+        else -> StatusError 
     }
 
     Column(
@@ -29,7 +29,7 @@ fun ResourceGauge(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(contentAlignment = Alignment.Center) {
-            // Indicador circular de progreso
+            
             CircularProgressIndicator(
                 progress = (percentage / 100.0).toFloat(),
                 modifier = Modifier.size(80.dp),
@@ -37,7 +37,7 @@ fun ResourceGauge(
                 strokeWidth = 8.dp,
                 trackColor = color.copy(alpha = 0.2f)
             )
-            // Texto con el porcentaje centrado
+            
             Text(
                 text = "${percentage.toInt()}%",
                 style = MaterialTheme.typography.labelLarge,
@@ -45,7 +45,7 @@ fun ResourceGauge(
             )
         }
         Spacer(modifier = Modifier.height(8.dp))
-        // Etiqueta del recurso (CPU, RAM, etc.)
+        
         Text(text = label, style = MaterialTheme.typography.bodyMedium)
     }
 }

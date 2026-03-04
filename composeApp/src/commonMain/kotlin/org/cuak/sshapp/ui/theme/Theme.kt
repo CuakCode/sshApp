@@ -16,7 +16,7 @@ private val LightColorScheme = lightColorScheme(
     primary = PrimaryLightColor,
     secondary = SecondaryLightColor,
     tertiary = TertiaryLightColor
-    // El resto de colores por defecto
+    
 )
 
 @Composable

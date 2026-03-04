@@ -1,4 +1,4 @@
-// composeApp/src/commonMain/kotlin/org/cuak/sshapp/ui/screens/filemanager/FileManagerViewModel.kt
+
 package org.cuak.sshapp.ui.screens.viewModels
 
 import androidx.compose.runtime.getValue
@@ -19,34 +19,34 @@ enum class SortOption { NAME, SIZE, DATE }
 enum class SortDirection { ASC, DESC }
 
 class FileManagerViewModel(
-    private val device: Device, // <- Cambiado a Device
+    private val device: Device, 
     private val sshClient: SshClient,
     private val localFileSystem: LocalFileSystem
 ) : ScreenModel {
 
-    // --- Estado Local ---
+    
     private val _localPath = MutableStateFlow(localFileSystem.getInitialPath())
     val localPath: StateFlow<String> = _localPath.asStateFlow()
 
     private val _localFiles = MutableStateFlow<List<SftpFile>>(emptyList())
     val localFiles: StateFlow<List<SftpFile>> = _localFiles.asStateFlow()
 
-    // --- Ordenación Local (Independiente) ---
+    
     var localSortOption by mutableStateOf(SortOption.NAME)
     var localSortDirection by mutableStateOf(SortDirection.ASC)
 
-    // --- Estado Remoto ---
+    
     private val _remotePath = MutableStateFlow(".")
     val remotePath: StateFlow<String> = _remotePath.asStateFlow()
 
     private val _remoteFiles = MutableStateFlow<List<SftpFile>>(emptyList())
     val remoteFiles: StateFlow<List<SftpFile>> = _remoteFiles.asStateFlow()
 
-    // --- Ordenación Remota (Independiente) ---
+    
     var remoteSortOption by mutableStateOf(SortOption.NAME)
     var remoteSortDirection by mutableStateOf(SortDirection.ASC)
 
-    // --- UI General ---
+    
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
@@ -62,7 +62,7 @@ class FileManagerViewModel(
         refreshRemote()
     }
 
-    // --- LÓGICA DE ORDENACIÓN LOCAL ---
+    
     fun toggleLocalSort(option: SortOption) {
         if (localSortOption == option) {
             localSortDirection = if (localSortDirection == SortDirection.ASC) SortDirection.DESC else SortDirection.ASC
@@ -73,7 +73,7 @@ class FileManagerViewModel(
         _localFiles.value = sortFiles(_localFiles.value, localSortOption, localSortDirection)
     }
 
-    // --- LÓGICA DE ORDENACIÓN REMOTA ---
+    
     fun toggleRemoteSort(option: SortOption) {
         if (remoteSortOption == option) {
             remoteSortDirection = if (remoteSortDirection == SortDirection.ASC) SortDirection.DESC else SortDirection.ASC
@@ -84,7 +84,7 @@ class FileManagerViewModel(
         _remoteFiles.value = sortFiles(_remoteFiles.value, remoteSortOption, remoteSortDirection)
     }
 
-    // Función pura de ordenación
+    
     private fun sortFiles(files: List<SftpFile>, option: SortOption, direction: SortDirection): List<SftpFile> {
         val sorted = when (option) {
             SortOption.NAME -> files.sortedBy { it.name.lowercase() }
@@ -92,10 +92,10 @@ class FileManagerViewModel(
             SortOption.DATE -> files.sortedBy { it.lastModified }
         }
         val directed = if (direction == SortDirection.DESC) sorted.reversed() else sorted
-        return directed.sortedBy { !it.isDirectory } // Carpetas siempre arriba
+        return directed.sortedBy { !it.isDirectory } 
     }
 
-    // --- NAVEGACIÓN LOCAL ---
+    
     fun navigateLocal(path: String) {
         _localPath.value = path
         refreshLocal()
@@ -122,7 +122,7 @@ class FileManagerViewModel(
         }
     }
 
-    // --- NAVEGACIÓN REMOTA ---
+    
     fun navigateRemote(path: String) {
         _remotePath.value = path
         refreshRemote()
@@ -143,7 +143,7 @@ class FileManagerViewModel(
     private fun refreshRemote() {
         screenModelScope.launch {
             _isLoading.value = true
-            sshClient.listRemoteFiles(device, _remotePath.value) // Pasamos el 'device'
+            sshClient.listRemoteFiles(device, _remotePath.value) 
                 .onSuccess { files ->
                     _remoteFiles.value = sortFiles(files, remoteSortOption, remoteSortDirection)
                 }
@@ -154,7 +154,7 @@ class FileManagerViewModel(
         }
     }
 
-    // --- TRANSFERENCIAS ---
+    
     fun upload(file: SftpFile) {
         if (file.isDirectory) return
         screenModelScope.launch {
@@ -164,7 +164,7 @@ class FileManagerViewModel(
 
             val destPath = if (_remotePath.value.endsWith("/")) "${_remotePath.value}${file.name}" else "${_remotePath.value}/${file.name}"
 
-            sshClient.uploadFile(device, file.path, destPath) { progress -> // Pasamos el 'device'
+            sshClient.uploadFile(device, file.path, destPath) { progress -> 
                 _transferProgress.value = progress
             }
                 .onSuccess {
@@ -188,7 +188,7 @@ class FileManagerViewModel(
             val separator = if (_localPath.value.endsWith("/") || _localPath.value.endsWith("\\")) "" else "/"
             val destPath = "${_localPath.value}$separator${file.name}"
 
-            sshClient.downloadFile(device, file.path, destPath) { progress -> // Pasamos el 'device'
+            sshClient.downloadFile(device, file.path, destPath) { progress -> 
                 _transferProgress.value = progress
             }
                 .onSuccess {
@@ -213,7 +213,7 @@ class FileManagerViewModel(
 
                 val tempPath = localFileSystem.getTempFilePath(file.name)
 
-                sshClient.downloadFile(device, file.path, tempPath) { progress -> // Pasamos el 'device'
+                sshClient.downloadFile(device, file.path, tempPath) { progress -> 
                     _transferProgress.value = progress
                 }
                     .onSuccess {

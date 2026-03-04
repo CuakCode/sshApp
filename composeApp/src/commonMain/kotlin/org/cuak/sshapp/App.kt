@@ -23,7 +23,7 @@ fun App() {
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background
         ) {
-            // Inicializamos el Navegador de Voyager con la pantalla de inicio
+            
             Navigator(HomeScreen()) { navigator ->
                 SlideTransition(navigator)
             }

@@ -10,6 +10,6 @@ data class ServerMetrics(
 
 data class PortInfo(
     val port: Int,
-    val protocol: String, // tcp, udp
-    val processName: String // ej: nginx, dropbear
+    val protocol: String, 
+    val processName: String 
 )

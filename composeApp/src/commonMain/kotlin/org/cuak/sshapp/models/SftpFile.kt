@@ -6,7 +6,7 @@ data class SftpFile(
     val isDirectory: Boolean,
     val size: Long,
     val permissions: String = "",
-    val lastModified: Long = 0L // <--- NUEVO CAMPO
+    val lastModified: Long = 0L 
 ) {
     fun sizeFormatted(): String {
         if (isDirectory) return ""

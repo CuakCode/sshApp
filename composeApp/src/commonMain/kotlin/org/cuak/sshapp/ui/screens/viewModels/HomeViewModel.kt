@@ -26,7 +26,7 @@ import org.cuak.sshapp.network.ConnectivityManager
 import org.cuak.sshapp.repository.ServerRepository
 import org.cuak.sshapp.repository.SettingsRepository
 
-// UI State adaptado a 'Device'
+
 data class HomeUiState(
     val devices: List<Device> = emptyList(),
     val isLoading: Boolean = true
@@ -38,16 +38,16 @@ class HomeViewModel(
     private val settingsRepository: SettingsRepository
 ) : ScreenModel {
 
-    // 1. Estado para el dispositivo seleccionado (BottomSheet)
+    
     var selectedDevice by mutableStateOf<Device?>(null)
         private set
 
-    // 2. Estado interno de los pings (Map: ID -> Online?)
+    
     private val _pingStatus = MutableStateFlow<Map<Long, Boolean>>(emptyMap())
 
-    // 3. Flow combinado: Base de datos + Estado de Red
+    
     val uiState: StateFlow<HomeUiState> = combine(
-        repository.getAllServers(), // Sigue llamándose getAllServers en tu Repo, pero devuelve List<Device>
+        repository.getAllServers(), 
         _pingStatus
     ) { devices, pingMap ->
         val mappedDevices = devices.map { device ->
@@ -58,7 +58,7 @@ class HomeViewModel(
                 null -> ServerStatus.UNKNOWN
             }
 
-            // MAGIA KOTLIN: Como Device es interfaz, hacemos cast seguro para usar su copy()
+            
             when (device) {
                 is Server -> device.copy(status = status)
                 is Camera -> device.copy(status = status)
@@ -81,13 +81,13 @@ class HomeViewModel(
                 val currentDevices = repository.getAllServers().first()
 
                 if (currentDevices.isNotEmpty()) {
-                    // 2. Leemos el timeout configurado en los ajustes (fuera del async para eficiencia)
+                    
                     val currentTimeout = settingsRepository.settings.value.pingTimeoutMs
 
                     val results = currentDevices.map { device ->
                         async {
                             val isReachable = try {
-                                // 3. Le pasamos el timeout personalizado a tu función
+                                
                                 connectivity.isReachable(device.ip, currentTimeout)
                             } catch (e: Exception) {
                                 false
@@ -103,15 +103,15 @@ class HomeViewModel(
         }
     }
 
-    // --- Acciones de UI (BottomSheet) ---
+    
     fun showDeviceOptions(device: Device) { selectedDevice = device }
     fun dismissOptions() { selectedDevice = null }
 
-    // --- Operaciones CRUD ---
+    
 
     fun addDevice(device: Device) {
         screenModelScope.launch {
-            // Ponemos ID 0 dependiendo del tipo concreto
+            
             val newDevice = when (device) {
                 is Server -> device.copy(id = 0)
                 is Camera -> device.copy(id = 0)

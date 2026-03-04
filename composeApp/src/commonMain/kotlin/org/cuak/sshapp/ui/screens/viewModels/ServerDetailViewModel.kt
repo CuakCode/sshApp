@@ -28,7 +28,7 @@ class ServerDetailViewModel(
     private val settingsRepository: SettingsRepository
 ) : ScreenModel {
 
-    // Cambiado de 'server' a 'device'
+    
     var device by mutableStateOf<Device?>(null)
         private set
 
@@ -49,7 +49,7 @@ class ServerDetailViewModel(
     var isProcessesLoading by mutableStateOf(false)
         private set
 
-    // --- Métricas ---
+    
     fun loadServer(serverId: Long) {
         screenModelScope.launch {
             device = repository.getServerById(serverId)
@@ -65,18 +65,18 @@ class ServerDetailViewModel(
 
             uiState = result.fold(
                 onSuccess = { metrics ->
-                    // --- AQUÍ ESTÁ LA MAGIA ---
-                    // 2. Leemos los días de retención configurados por el usuario
+                    
+                    
                     val retentionDays = settingsRepository.settings.value.metricsRetentionDays
 
-                    // 3. Guardamos la métrica y limpiamos el historial antiguo en segundo plano
+                    
                     repository.saveMetricsAndCleanOld(
                         serverId = currentDevice.id,
                         metrics = metrics,
                         retentionDays = retentionDays
                     )
 
-                    // 4. Actualizamos el estado de la UI para mostrar los gráficos
+                    
                     DetailUiState.Success(metrics)
                 },
                 onFailure = { DetailUiState.Error(it.message ?: "Error") }
@@ -84,12 +84,12 @@ class ServerDetailViewModel(
         }
     }
 
-    // --- Procesos ---
+    
     fun fetchProcesses() {
         val currentDevice = device ?: return
         screenModelScope.launch {
             isProcessesLoading = true
-            // NOTA: Asegúrate de que SshClient.fetchProcesses acepta 'Device'
+            
             sshClient.fetchProcesses(currentDevice).onSuccess { rawList ->
                 processes = sortList(rawList, processSortOption)
             }
@@ -116,7 +116,7 @@ class ServerDetailViewModel(
         screenModelScope.launch { sshClient.shutdown(currentDevice) }
     }
 
-    // --- Terminal ---
+    
     fun startTerminal() {
         val currentDevice = device ?: return
         if (terminalSession != null) return
@@ -124,7 +124,7 @@ class ServerDetailViewModel(
         screenModelScope.launch {
             terminalOutput = "Conectado a ${currentDevice.ip}...\n"
 
-            // NOTA: Asegúrate de que SshClient.openTerminal acepta 'Device'
+            
             sshClient.openTerminal(currentDevice).fold(
                 onSuccess = { session ->
                     terminalSession = session
