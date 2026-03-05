@@ -1,6 +1,12 @@
 package org.cuak.sshapp.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,6 +20,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.graphics.vector.ImageVector
 import cafe.adriel.voyager.core.screen.Screen
@@ -66,6 +73,9 @@ data class ServerDetailScreen(val serverId: Long) : Screen {
         var selectedTabIndex by remember { mutableStateOf(0) }
         var showShutdownDialog by remember { mutableStateOf(false) }
 
+        // 1. Estado para controlar la visibilidad de las barras (TopAppBar y TabRow)
+        var isUIVisible by remember { mutableStateOf(true) }
+
         if (showShutdownDialog) {
             AlertDialog(
                 onDismissRequest = { showShutdownDialog = false },
@@ -88,64 +98,89 @@ data class ServerDetailScreen(val serverId: Long) : Screen {
 
         Scaffold(
             topBar = {
-                TopAppBar(
-                    title = {
-                        Column {
-                            Text(
-                                text = device?.name ?: stringResource(Res.string.server_detail_loading),
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                            device?.let { Text(it.ip, style = MaterialTheme.typography.bodySmall) }
-                        }
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = { navigator.pop() }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(Res.string.server_detail_back_desc))
-                        }
-                    },
-                    actions = {
-                        IconButton(onClick = { showShutdownDialog = true }) {
-                            Icon(
-                                Icons.Default.PowerSettingsNew,
-                                contentDescription = stringResource(Res.string.server_detail_shutdown_desc),
-                                tint = MaterialTheme.colorScheme.error
-                            )
-                        }
-                        IconButton(onClick = {
-                            // --- 4. LÓGICA DE REFRESCO SEGURA POR TIPO DE ENUM ---
-                            when (tabs.getOrNull(selectedTabIndex)) {
-                                ServerTab.MONITOR -> viewModel.fetchMetrics()
-                                ServerTab.PROCESSES -> viewModel.fetchProcesses()
-                                else -> { }
+                AnimatedVisibility(
+                    visible = isUIVisible,
+                    enter = slideInVertically(initialOffsetY = { -it }) + expandVertically(),
+                    exit = slideOutVertically(targetOffsetY = { -it }) + shrinkVertically()
+                ) {
+                    TopAppBar(
+                        title = {
+                            Column {
+                                Text(
+                                    text = device?.name ?: stringResource(Res.string.server_detail_loading),
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                                device?.let { Text(it.ip, style = MaterialTheme.typography.bodySmall) }
                             }
-                        }) {
-                            Icon(Icons.Default.Refresh, stringResource(Res.string.server_detail_refresh_desc))
+                        },
+                        navigationIcon = {
+                            IconButton(onClick = { navigator.pop() }) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(Res.string.server_detail_back_desc))
+                            }
+                        },
+                        actions = {
+                            IconButton(onClick = { showShutdownDialog = true }) {
+                                Icon(
+                                    Icons.Default.PowerSettingsNew,
+                                    contentDescription = stringResource(Res.string.server_detail_shutdown_desc),
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                            }
+                            IconButton(onClick = {
+                                when (tabs.getOrNull(selectedTabIndex)) {
+                                    ServerTab.MONITOR -> viewModel.fetchMetrics()
+                                    ServerTab.PROCESSES -> viewModel.fetchProcesses()
+                                    else -> { }
+                                }
+                            }) {
+                                Icon(Icons.Default.Refresh, stringResource(Res.string.server_detail_refresh_desc))
+                            }
                         }
-                    }
-                )
+                    )
+                }
             }
         ) { padding ->
             Column(modifier = Modifier.padding(padding).fillMaxSize()) {
 
                 if (tabs.isNotEmpty()) {
-                    TabRow(
-                        selectedTabIndex = selectedTabIndex,
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        contentColor = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.fillMaxWidth()
+                    // 3. Animamos también el TabRow
+                    AnimatedVisibility(
+                        visible = isUIVisible,
+                        enter = expandVertically(),
+                        exit = shrinkVertically()
                     ) {
-                        tabs.forEachIndexed { index, tab ->
-                            Tab(
-                                selected = selectedTabIndex == index,
-                                onClick = { selectedTabIndex = index },
-                                text = { Text(stringResource(tab.titleRes), maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                                icon = { Icon(tab.icon, contentDescription = null) }
-                            )
+                        TabRow(
+                            selectedTabIndex = selectedTabIndex,
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            contentColor = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            tabs.forEachIndexed { index, tab ->
+                                Tab(
+                                    selected = selectedTabIndex == index,
+                                    onClick = { selectedTabIndex = index },
+                                    text = { Text(stringResource(tab.titleRes), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                    icon = { Icon(tab.icon, contentDescription = null) }
+                                )
+                            }
                         }
                     }
                 }
 
-                Box(modifier = Modifier.fillMaxSize()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .pointerInput(Unit) {
+                            detectVerticalDragGestures { _, dragAmount ->
+                                if (dragAmount < -15) {
+                                    isUIVisible = false
+                                }
+                                else if (dragAmount > 15) {
+                                    isUIVisible = true
+                                }
+                            }
+                        }
+                ) {
                     val currentTab = tabs.getOrNull(selectedTabIndex)
 
                     when (currentTab) {

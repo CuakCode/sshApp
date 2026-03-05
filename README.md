@@ -124,7 +124,7 @@ El proyecto se encuentra en desarrollo continuo. Entre las mejoras planificadas 
 - [ ] Gráficas lineales evolutivas para analizar el consumo de CPU/RAM a lo largo del tiempo.
 - [ ] Integración y testeo completo en ecosistemas iOS puros.
 - [ ] Optimización de la carga inicial en la transmisión de video RTSP.
-- [ ] Añadir soporte para múltiples idiomas (i18n).
+- [x] Añadir soporte para múltiples idiomas (i18n).
 - [ ] Firmar la aplicación con una firma válida y confiable.
 - [ ] Gestión de notificaciones personalizables para Android e iOS.
 
