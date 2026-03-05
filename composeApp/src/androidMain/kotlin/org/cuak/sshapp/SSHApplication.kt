@@ -16,15 +16,12 @@ class SSHApplication : Application() {
     override fun onCreate() {
         super.onCreate()
 
-        // Iniciamos Koin una única vez aquí.
-        // Esto evita el crash al rotar la pantalla.
         initKoin(
             appDeclaration = {
                 androidLogger()
                 androidContext(this@SSHApplication)
             },
             platformModules = listOf(module {
-                // Definimos las implementaciones específicas de Android aquí
                 single<DatabaseDriverFactory> { AndroidDatabaseDriverFactory(androidContext()) }
                 single<SshClient> { AndroidSshClient() }
                 single<LocalFileSystem> { AndroidLocalFileSystem(androidContext()) }

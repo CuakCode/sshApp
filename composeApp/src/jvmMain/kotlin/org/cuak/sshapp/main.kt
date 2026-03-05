@@ -42,7 +42,7 @@ fun main() {
     application {
         Window(
             onCloseRequest = ::exitApplication,
-            title = "sshApp",
+            title = "omniSSH",
         ) {
             App()
         }
