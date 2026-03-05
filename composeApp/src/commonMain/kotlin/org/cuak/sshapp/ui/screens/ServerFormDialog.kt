@@ -68,7 +68,6 @@ fun ServerFormDialog(
 
     val launcher = rememberFilePickerLauncher(
         type = FileKitType.File(extensions = listOf("pem", "key", "ppk", "pub")),
-        title = stringResource(Res.string.server_form_key_picker_title)
     ) { file ->
         file?.path?.let { sshKeyPath = it }
     }

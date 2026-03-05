@@ -65,7 +65,6 @@ kotlin {
         val sharedJvmMain by creating {
             dependsOn(commonMain)
             dependencies {
-                // 2. CORRECCIÓN: Usamos String explícito para evitar el error de tipos con 'exclude'
                 implementation("com.hierynomus:sshj:${libs.versions.sshj.get()}") {
                     exclude(group = "org.bouncycastle")
                 }
@@ -73,14 +72,11 @@ kotlin {
                 implementation(libs.bouncycastle.prov)
                 implementation(libs.bouncycastle.pkix)
                 implementation(libs.slf4j.nop)
-
-                // Usamos la versión de corrutinas definida en tu toml
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:${libs.versions.kotlinx.coroutines.get()}")
             }
         }
 
         val androidMain by getting {
-            // Hereda de sharedJvmMain
             dependsOn(sharedJvmMain)
 
             dependencies {
@@ -96,7 +92,6 @@ kotlin {
         }
 
         val jvmMain by getting {
-            // Hereda de sharedJvmMain
             dependsOn(sharedJvmMain)
 
             dependencies {
@@ -145,7 +140,7 @@ android {
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
-        versionName = "1.0"
+        versionName = "1.0.1"
     }
     packaging {
         resources {
@@ -177,7 +172,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb, TargetFormat.AppImage)
             packageName = "org.cuak.sshapp"
-            packageVersion = "1.0.0"
+            packageVersion = "1.0.1"
         }
     }
 }
