@@ -24,6 +24,8 @@ import org.cuak.sshapp.ui.screens.viewModels.DetailUiState
 import org.cuak.sshapp.ui.theme.StatusError
 import org.cuak.sshapp.ui.theme.StatusSuccess
 import org.cuak.sshapp.ui.theme.StatusWarning
+import org.jetbrains.compose.resources.stringResource
+import sshapp.composeapp.generated.resources.*
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -38,7 +40,7 @@ fun MonitorTabContent(
         contentAlignment = Alignment.Center
     ) {
         when (state) {
-            is DetailUiState.Idle -> Text("Conectando...", style = MaterialTheme.typography.bodyLarge)
+            is DetailUiState.Idle -> Text(stringResource(Res.string.monitor_tab_connecting), style = MaterialTheme.typography.bodyLarge)
             is DetailUiState.Loading -> CircularProgressIndicator()
             is DetailUiState.Error -> ErrorView(state.message, onRetry)
             is DetailUiState.Success -> {
@@ -56,12 +58,12 @@ fun MonitorTabContent(
                     
                     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            Text("Rendimiento", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                            Text(stringResource(Res.string.monitor_tab_performance), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                             Spacer(modifier = Modifier.height(16.dp))
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                                ResourceGauge("CPU", state.metrics.cpuPercentage)
-                                if (validRam != null) ResourceGauge("RAM", validRam)
-                                else Text("RAM N/A", color = MaterialTheme.colorScheme.error)
+                                ResourceGauge(stringResource(Res.string.monitor_tab_cpu), state.metrics.cpuPercentage)
+                                if (validRam != null) ResourceGauge(stringResource(Res.string.monitor_tab_ram), validRam)
+                                else Text(stringResource(Res.string.monitor_tab_ram_na), color = MaterialTheme.colorScheme.error)
                             }
                         }
                     }
@@ -70,10 +72,10 @@ fun MonitorTabContent(
                     if (validDisks.isNotEmpty()) {
                         ElevatedCard(modifier = Modifier.fillMaxWidth()) {
                             Column(modifier = Modifier.padding(16.dp)) {
-                                Text("Almacenamiento", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                Text(stringResource(Res.string.monitor_tab_storage), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                                 Spacer(modifier = Modifier.height(16.dp))
                                 validDisks.forEachIndexed { index, usage ->
-                                    val label = if (index == 0) "Raíz" else "Disco ${index + 1}"
+                                    val label = if (index == 0) stringResource(Res.string.monitor_tab_storage_root) else stringResource(Res.string.monitor_tab_storage_disk, index + 1)
                                     DiskUsageBar(label, usage)
                                     if (index < validDisks.size - 1) Spacer(modifier = Modifier.height(8.dp))
                                 }
@@ -85,7 +87,7 @@ fun MonitorTabContent(
                     if (state.metrics.openPorts.isNotEmpty()) {
                         ElevatedCard(modifier = Modifier.fillMaxWidth()) {
                             Column(modifier = Modifier.padding(16.dp)) {
-                                Text("Puertos Activos", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                Text(stringResource(Res.string.monitor_tab_active_ports), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                                 Spacer(modifier = Modifier.height(12.dp))
                                 PortsGrid(state.metrics.openPorts)
                             }
@@ -96,7 +98,7 @@ fun MonitorTabContent(
                     if (validTemps.isNotEmpty()) {
                         ElevatedCard(modifier = Modifier.fillMaxWidth()) {
                             Column(modifier = Modifier.padding(16.dp)) {
-                                Text("Temperatura", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                Text(stringResource(Res.string.monitor_tab_temperature), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                                 Spacer(modifier = Modifier.height(8.dp))
                                 validTemps.forEach { (sensor, temp) ->
                                     Row(
@@ -172,9 +174,9 @@ fun ErrorView(message: String, onRetry: () -> Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(32.dp)) {
         Icon(Icons.Default.CloudOff, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(64.dp))
         Spacer(modifier = Modifier.height(16.dp))
-        Text("No se pudo conectar", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Text(stringResource(Res.string.monitor_tab_error_connect), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Text(message, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(vertical = 8.dp))
-        Button(onClick = onRetry) { Text("Reintentar") }
+        Button(onClick = onRetry) { Text(stringResource(Res.string.monitor_tab_retry)) }
     }
 }
 

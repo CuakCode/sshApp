@@ -30,4 +30,18 @@ class SettingsViewModel(
         val current = settings.value
         settingsRepository.updateSettings(current.copy(databasePath = path))
     }
+
+    fun updateLanguage(language: String) {
+        val current = settings.value
+
+        val supportedLanguages = listOf("system", "es", "en")
+
+        val safeLanguage = if (language in supportedLanguages) {
+            language
+        } else {
+            "en"
+        }
+
+        settingsRepository.updateSettings(current.copy(language = safeLanguage))
+    }
 }

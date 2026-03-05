@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_title">My Devices</string>
+    <string name="home_settings_desc">Settings</string>
+    <string name="home_add_device_desc">Add Device</string>
+    <string name="home_empty_state">No devices configured.\nPress + to add one.</string>
+    <string name="home_edit_device">Edit Device</string>
+    <string name="home_delete_device">Delete Device</string>
+
+
+    <string name="server_detail_loading">Loading...</string>
+    <string name="server_detail_back_desc">Back</string>
+    <string name="server_detail_shutdown_desc">Shutdown</string>
+    <string name="server_detail_refresh_desc">Refresh</string>
+
+    <string name="server_detail_shutdown_dialog_title">Shutdown Device?</string>
+    <string name="server_detail_shutdown_dialog_text">Will execute 'sudo poweroff'.</string>
+    <string name="server_detail_shutdown_dialog_confirm">Shutdown</string>
+    <string name="server_detail_shutdown_dialog_cancel">Cancel</string>
+
+    <string name="server_detail_tab_camera">Camera</string>
+    <string name="server_detail_tab_monitor">Monitor</string>
+    <string name="server_detail_tab_processes">Processes</string>
+    <string name="server_detail_tab_terminal">Terminal</string>
+    <string name="server_detail_tab_files">Files</string>
+
+    <string name="monitor_tab_connecting">Connecting...</string>
+    <string name="monitor_tab_performance">Performance</string>
+    <string name="monitor_tab_cpu">CPU</string>
+    <string name="monitor_tab_ram">RAM</string>
+    <string name="monitor_tab_ram_na">RAM N/A</string>
+    <string name="monitor_tab_storage">Storage</string>
+    <string name="monitor_tab_storage_root">Root</string>
+    <string name="monitor_tab_storage_disk">Disk %1$d</string>
+    <string name="monitor_tab_active_ports">Active Ports</string>
+    <string name="monitor_tab_temperature">Temperature</string>
+    <string name="monitor_tab_error_connect">Could not connect</string>
+    <string name="monitor_tab_retry">Retry</string>
+
+    <string name="processes_tab_total">Total: %1$d processes</string>
+    <string name="processes_tab_refresh_desc">Refresh</string>
+    <string name="processes_tab_col_pid">PID</string>
+    <string name="processes_tab_col_name">Name</string>
+    <string name="processes_tab_col_cpu">CPU%</string>
+    <string name="processes_tab_col_mem">MEM%</string>
+
+    <string name="file_manager_transferring">Transferring...</string>
+    <string name="file_manager_local">Local</string>
+    <string name="file_manager_remote">Remote</string>
+    <string name="file_manager_up_desc">Up</string>
+    <string name="file_manager_sort_name">Name</string>
+    <string name="file_manager_sort_size">Size</string>
+    <string name="file_manager_sort_date">Date</string>
+    <string name="file_manager_transfer_desc">Transfer</string>
+
+    <string name="server_form_title_new">New Device</string>
+    <string name="server_form_title_edit">Edit Device</string>
+    <string name="server_form_type_label">Device Type</string>
+    <string name="server_form_type_server">Linux Server</string>
+    <string name="server_form_type_server_desc">VPS, Raspberry Pi, Debian...</string>
+    <string name="server_form_type_camera">Yi Hack Camera</string>
+    <string name="server_form_type_camera_short">Camera</string>
+    <string name="server_form_type_camera_desc">Yi Home/Kami (Allwinner/MStar)</string>
+
+    <string name="server_form_icon_label">Visual Icon</string>
+    <string name="server_form_name_label">Name</string>
+    <string name="server_form_ip_label">IP / Host</string>
+    <string name="server_form_port_label">SSH Port</string>
+    <string name="server_form_user_label">SSH User</string>
+    <string name="server_form_pass_label">SSH Password (Optional)</string>
+    <string name="server_form_key_label">Private Key Path (Optional)</string>
+    <string name="server_form_key_placeholder">Select file...</string>
+    <string name="server_form_key_picker_title">Select Private Key</string>
+
+    <string name="server_form_cam_title">RTSP Video Settings</string>
+    <string name="server_form_cam_protocol">Protocol</string>
+    <string name="server_form_cam_port">Video Port</string>
+    <string name="server_form_cam_quality_label">Stream Quality</string>
+    <string name="server_form_cam_quality_high">High Quality (Main)</string>
+    <string name="server_form_cam_quality_high_desc">High Quality (ch0_0.h264)</string>
+    <string name="server_form_cam_quality_low">Low Quality (Sub)</string>
+    <string name="server_form_cam_quality_low_desc">Low Quality (ch0_1.h264)</string>
+
+    <string name="server_form_action_cancel">Cancel</string>
+    <string name="server_form_action_save">Save</string>
+
+
+    <string name="settings_title">Settings</string>
+    <string name="settings_back_desc">Back</string>
+    <string name="settings_metrics_retention">Metrics retention days</string>
+    <string name="settings_ping_timeout">Ping timeout (ms)</string>
+    <string name="settings_global_theme">Global theme</string>
+    <string name="settings_dark_mode_desc">Dark Mode</string>
+    <string name="settings_light_mode_desc">Light Mode</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_db_path">Database path (.db)</string>
+    <string name="settings_db_path_support">Requires app restart to apply changes.</string>
+</resources>

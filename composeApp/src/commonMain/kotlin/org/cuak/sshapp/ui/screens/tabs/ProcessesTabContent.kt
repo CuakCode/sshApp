@@ -27,6 +27,14 @@ import org.cuak.sshapp.models.ProcessSortOption
 import org.cuak.sshapp.ui.theme.StatusError
 import org.cuak.sshapp.ui.theme.StatusSuccess
 import org.cuak.sshapp.ui.theme.StatusWarning
+import org.jetbrains.compose.resources.stringResource
+import sshapp.composeapp.generated.resources.Res
+import sshapp.composeapp.generated.resources.processes_tab_col_cpu
+import sshapp.composeapp.generated.resources.processes_tab_col_mem
+import sshapp.composeapp.generated.resources.processes_tab_col_name
+import sshapp.composeapp.generated.resources.processes_tab_col_pid
+import sshapp.composeapp.generated.resources.processes_tab_refresh_desc
+import sshapp.composeapp.generated.resources.processes_tab_total
 import kotlin.math.pow
 import kotlin.math.roundToInt
 
@@ -51,12 +59,12 @@ fun ProcessesTabContent(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Total: ${processes.size} procesos",
+                    text = stringResource(Res.string.processes_tab_total, processes.size),
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.secondary
                 )
                 IconButton(onClick = onRefresh) {
-                    Icon(Icons.Default.Refresh, "Refrescar")
+                    Icon(Icons.Default.Refresh, stringResource(Res.string.processes_tab_refresh_desc))
                 }
             }
 
@@ -103,7 +111,7 @@ fun ProcessHeaderRow(
         
         
         HeaderCell(
-            text = "PID",
+            text = stringResource(Res.string.processes_tab_col_pid),
             weight = 0.15f,
             align = Alignment.CenterStart,
             isSelected = currentSort == ProcessSortOption.PID,
@@ -111,7 +119,7 @@ fun ProcessHeaderRow(
         )
         
         HeaderCell(
-            text = "Nombre",
+            text = stringResource(Res.string.processes_tab_col_name),
             weight = 0.45f,
             align = Alignment.CenterStart,
             isSelected = currentSort == ProcessSortOption.NAME,
@@ -119,7 +127,7 @@ fun ProcessHeaderRow(
         )
         
         HeaderCell(
-            text = "CPU%",
+            text = stringResource(Res.string.processes_tab_col_cpu),
             weight = 0.2f,
             align = Alignment.CenterEnd,
             isSelected = currentSort == ProcessSortOption.CPU,
@@ -127,7 +135,7 @@ fun ProcessHeaderRow(
         )
         
         HeaderCell(
-            text = "MEM%",
+            text = stringResource(Res.string.processes_tab_col_mem),
             weight = 0.2f,
             align = Alignment.CenterEnd,
             isSelected = currentSort == ProcessSortOption.MEM,

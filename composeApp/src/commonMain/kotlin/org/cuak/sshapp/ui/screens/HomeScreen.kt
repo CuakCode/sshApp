@@ -23,6 +23,8 @@ import org.cuak.sshapp.models.Server
 import org.cuak.sshapp.models.Camera
 import org.cuak.sshapp.ui.components.ServerCard
 import org.cuak.sshapp.ui.screens.viewModels.HomeViewModel
+import org.jetbrains.compose.resources.stringResource
+import sshapp.composeapp.generated.resources.*
 
 class HomeScreen : Screen {
 
@@ -63,7 +65,7 @@ private fun HomeScreenContent(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Mis Dispositivos") },
+                title = { Text(stringResource(Res.string.home_title)) },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background
                 ),
@@ -72,7 +74,7 @@ private fun HomeScreenContent(
                     IconButton(onClick = onSettingsClick) {
                         Icon(
                             imageVector = Icons.Default.Settings,
-                            contentDescription = "Ajustes"
+                            contentDescription = stringResource(Res.string.home_settings_desc)
                         )
                     }
                 }
@@ -83,7 +85,7 @@ private fun HomeScreenContent(
                 onClick = { showAddDialog = true },
                 containerColor = MaterialTheme.colorScheme.primary
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Añadir Dispositivo")
+                Icon(Icons.Default.Add, contentDescription = stringResource(Res.string.home_add_device_desc))
             }
         }
     ) { padding ->
@@ -99,7 +101,7 @@ private fun HomeScreenContent(
                 }
                 state.devices.isEmpty() -> {
                     Text(
-                        text = "No hay dispositivos configurados.\nPulsa + para añadir uno.",
+                        text = stringResource(Res.string.home_empty_state),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
@@ -186,12 +188,12 @@ private fun DeviceOptionsContent(
 ) {
     Column(modifier = Modifier.padding(bottom = 24.dp)) {
         ListItem(
-            headlineContent = { Text("Editar Dispositivo") },
+            headlineContent = { Text(stringResource(Res.string.home_edit_device)) },
             leadingContent = { Icon(Icons.Default.Edit, contentDescription = null) },
             modifier = Modifier.clickable { onEdit() }
         )
         ListItem(
-            headlineContent = { Text("Eliminar Dispositivo", color = MaterialTheme.colorScheme.error) },
+            headlineContent = { Text(stringResource(Res.string.home_delete_device), color = MaterialTheme.colorScheme.error) },
             leadingContent = {
                 Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
             },

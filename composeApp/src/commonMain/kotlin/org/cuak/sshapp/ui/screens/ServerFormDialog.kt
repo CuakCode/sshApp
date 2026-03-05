@@ -23,15 +23,17 @@ import org.cuak.sshapp.models.Device
 import org.cuak.sshapp.models.Server
 import org.cuak.sshapp.models.Camera
 import org.cuak.sshapp.ui.components.getIconByName
+import org.jetbrains.compose.resources.stringResource
+import sshapp.composeapp.generated.resources.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServerFormDialog(
-    device: Device? = null, 
+    device: Device? = null,
     onDismiss: () -> Unit,
-    onConfirm: (Device) -> Unit 
+    onConfirm: (Device) -> Unit
 ) {
-    
+
     var name by remember { mutableStateOf(device?.name ?: "") }
     var ip by remember { mutableStateOf(device?.ip ?: "") }
     var port by remember { mutableStateOf(device?.port?.toString() ?: "22") }
@@ -40,30 +42,22 @@ fun ServerFormDialog(
     var sshKeyPath by remember { mutableStateOf(device?.sshKeyPath ?: "") }
     var passwordVisible by remember { mutableStateOf(false) }
 
-    
-    
     var isCameraType by remember { mutableStateOf(device is Camera) }
     var selectedIcon by remember { mutableStateOf(device?.iconName ?: "dns") }
 
-    
     var typeExpanded by remember { mutableStateOf(false) }
     var iconExpanded by remember { mutableStateOf(false) }
 
-    
-    
     val initialCamera = device as? Camera
     var cameraProtocol by remember { mutableStateOf(initialCamera?.cameraProtocol ?: "RTSP") }
     var cameraPort by remember { mutableStateOf(initialCamera?.cameraPort?.toString() ?: "8554") }
     var cameraStream by remember { mutableStateOf(initialCamera?.cameraStream ?: "ch0_0.h264") }
 
-    
     val iconOptions = listOf(
         "dns", "videocam", "camera_alt", "security", "cast_connected",
         "storage", "computer", "router", "cloud", "memory", "smart_toy"
     )
 
-    
-    
     LaunchedEffect(isCameraType) {
         if (isCameraType && device == null) {
             if (selectedIcon == "dns") selectedIcon = "videocam"
@@ -72,10 +66,9 @@ fun ServerFormDialog(
         }
     }
 
-    
     val launcher = rememberFilePickerLauncher(
         type = FileKitType.File(extensions = listOf("pem", "key", "ppk", "pub")),
-        title = "Seleccionar Clave Privada"
+        title = stringResource(Res.string.server_form_key_picker_title)
     ) { file ->
         file?.path?.let { sshKeyPath = it }
     }
@@ -95,22 +88,21 @@ fun ServerFormDialog(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    text = if (device == null) "Nuevo Dispositivo" else "Editar Dispositivo",
+                    text = stringResource(if (device == null) Res.string.server_form_title_new else Res.string.server_form_title_edit),
                     style = MaterialTheme.typography.headlineSmall
                 )
 
                 HorizontalDivider()
 
-                
                 ExposedDropdownMenuBox(
                     expanded = typeExpanded,
                     onExpandedChange = { typeExpanded = !typeExpanded }
                 ) {
                     OutlinedTextField(
-                        value = if (!isCameraType) "Servidor Linux" else "Cámara Yi Hack",
+                        value = stringResource(if (!isCameraType) Res.string.server_form_type_server else Res.string.server_form_type_camera),
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Tipo de Dispositivo") },
+                        label = { Text(stringResource(Res.string.server_form_type_label)) },
                         leadingIcon = {
                             Icon(
                                 imageVector = if (!isCameraType) Icons.Default.Dns else Icons.Default.Videocam,
@@ -131,8 +123,8 @@ fun ServerFormDialog(
                         DropdownMenuItem(
                             text = {
                                 Column {
-                                    Text("Servidor Linux", style = MaterialTheme.typography.bodyLarge)
-                                    Text("VPS, Raspberry Pi, Debian...", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+                                    Text(stringResource(Res.string.server_form_type_server), style = MaterialTheme.typography.bodyLarge)
+                                    Text(stringResource(Res.string.server_form_type_server_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
                                 }
                             },
                             onClick = { isCameraType = false; typeExpanded = false },
@@ -142,8 +134,8 @@ fun ServerFormDialog(
                         DropdownMenuItem(
                             text = {
                                 Column {
-                                    Text("Cámara", style = MaterialTheme.typography.bodyLarge)
-                                    Text("Yi Home/Kami (Allwinner/MStar)", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+                                    Text(stringResource(Res.string.server_form_type_camera_short), style = MaterialTheme.typography.bodyLarge)
+                                    Text(stringResource(Res.string.server_form_type_camera_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
                                 }
                             },
                             onClick = { isCameraType = true; typeExpanded = false },
@@ -152,7 +144,6 @@ fun ServerFormDialog(
                     }
                 }
 
-                
                 ExposedDropdownMenuBox(
                     expanded = iconExpanded,
                     onExpandedChange = { iconExpanded = !iconExpanded }
@@ -161,7 +152,7 @@ fun ServerFormDialog(
                         value = selectedIcon.replaceFirstChar { it.uppercase() },
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Icono Visual") },
+                        label = { Text(stringResource(Res.string.server_form_icon_label)) },
                         leadingIcon = { Icon(getIconByName(selectedIcon), contentDescription = null) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = iconExpanded) },
                         modifier = Modifier.menuAnchor().fillMaxWidth()
@@ -180,11 +171,10 @@ fun ServerFormDialog(
                     }
                 }
 
-                
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Nombre") },
+                    label = { Text(stringResource(Res.string.server_form_name_label)) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
@@ -193,14 +183,14 @@ fun ServerFormDialog(
                     OutlinedTextField(
                         value = ip,
                         onValueChange = { ip = it },
-                        label = { Text("IP / Host") },
+                        label = { Text(stringResource(Res.string.server_form_ip_label)) },
                         modifier = Modifier.weight(1f),
                         singleLine = true
                     )
                     OutlinedTextField(
                         value = port,
                         onValueChange = { if (it.all { c -> c.isDigit() }) port = it },
-                        label = { Text("Puerto SSH") },
+                        label = { Text(stringResource(Res.string.server_form_port_label)) },
                         modifier = Modifier.width(110.dp),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true
@@ -210,7 +200,7 @@ fun ServerFormDialog(
                 OutlinedTextField(
                     value = username,
                     onValueChange = { username = it },
-                    label = { Text("Usuario SSH") },
+                    label = { Text(stringResource(Res.string.server_form_user_label)) },
                     modifier = Modifier.fillMaxWidth(),
                     placeholder = { if (isCameraType) Text("root") },
                     singleLine = true
@@ -219,7 +209,7 @@ fun ServerFormDialog(
                 OutlinedTextField(
                     value = password,
                     onValueChange = { password = it },
-                    label = { Text("Contraseña SSH (Opcional)") },
+                    label = { Text(stringResource(Res.string.server_form_pass_label)) },
                     modifier = Modifier.fillMaxWidth(),
                     visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                     trailingIcon = {
@@ -234,19 +224,18 @@ fun ServerFormDialog(
                 OutlinedTextField(
                     value = sshKeyPath,
                     onValueChange = { sshKeyPath = it },
-                    label = { Text("Ruta Clave Privada (Opcional)") },
+                    label = { Text(stringResource(Res.string.server_form_key_label)) },
                     modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("Seleccionar archivo...") },
+                    placeholder = { Text(stringResource(Res.string.server_form_key_placeholder)) },
                     singleLine = true,
                     readOnly = true,
                     trailingIcon = {
                         IconButton(onClick = { launcher.launch() }) {
-                            Icon(Icons.Default.AttachFile, contentDescription = "Seleccionar archivo")
+                            Icon(Icons.Default.AttachFile, contentDescription = null)
                         }
                     }
                 )
 
-                
                 if (isCameraType) {
                     Card(
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
@@ -256,33 +245,32 @@ fun ServerFormDialog(
                             modifier = Modifier.padding(12.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Text("Configuración de Video RTSP", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                            Text(stringResource(Res.string.server_form_cam_title), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
 
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 OutlinedTextField(
                                     value = cameraProtocol,
                                     onValueChange = { cameraProtocol = it },
-                                    label = { Text("Protocolo") },
+                                    label = { Text(stringResource(Res.string.server_form_cam_protocol)) },
                                     modifier = Modifier.weight(1f),
                                     enabled = false
                                 )
                                 OutlinedTextField(
                                     value = cameraPort,
                                     onValueChange = { if (it.all { c -> c.isDigit() }) cameraPort = it },
-                                    label = { Text("Puerto Video") },
+                                    label = { Text(stringResource(Res.string.server_form_cam_port)) },
                                     modifier = Modifier.width(110.dp),
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                     singleLine = true
                                 )
                             }
 
-                            
                             var expandedStream by remember { mutableStateOf(false) }
                             Box(modifier = Modifier.fillMaxWidth()) {
                                 OutlinedTextField(
-                                    value = if (cameraStream == "ch0_0.h264") "Alta Calidad (Main)" else "Baja Calidad (Sub)",
+                                    value = stringResource(if (cameraStream == "ch0_0.h264") Res.string.server_form_cam_quality_high else Res.string.server_form_cam_quality_low),
                                     onValueChange = {},
-                                    label = { Text("Calidad Stream") },
+                                    label = { Text(stringResource(Res.string.server_form_cam_quality_label)) },
                                     modifier = Modifier.fillMaxWidth(),
                                     readOnly = true,
                                     trailingIcon = { Icon(Icons.Default.ArrowDropDown, null) }
@@ -296,11 +284,11 @@ fun ServerFormDialog(
                                     onDismissRequest = { expandedStream = false }
                                 ) {
                                     DropdownMenuItem(
-                                        text = { Text("Alta Calidad (ch0_0.h264)") },
+                                        text = { Text(stringResource(Res.string.server_form_cam_quality_high_desc)) },
                                         onClick = { cameraStream = "ch0_0.h264"; expandedStream = false }
                                     )
                                     DropdownMenuItem(
-                                        text = { Text("Baja Calidad (ch0_1.h264)") },
+                                        text = { Text(stringResource(Res.string.server_form_cam_quality_low_desc)) },
                                         onClick = { cameraStream = "ch0_1.h264"; expandedStream = false }
                                     )
                                 }
@@ -311,20 +299,17 @@ fun ServerFormDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     TextButton(onClick = onDismiss) {
-                        Text("Cancelar")
+                        Text(stringResource(Res.string.server_form_action_cancel))
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
                         onClick = {
-                            
-                            
                             val finalDevice = if (isCameraType) {
                                 Camera(
                                     id = device?.id ?: 0,
@@ -355,7 +340,7 @@ fun ServerFormDialog(
                         },
                         enabled = name.isNotBlank() && ip.isNotBlank() && username.isNotBlank()
                     ) {
-                        Text("Guardar")
+                        Text(stringResource(Res.string.server_form_action_save))
                     }
                 }
             }

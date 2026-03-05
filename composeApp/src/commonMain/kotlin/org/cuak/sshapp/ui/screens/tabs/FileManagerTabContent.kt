@@ -28,6 +28,16 @@ import org.cuak.sshapp.models.SftpFile
 import org.cuak.sshapp.ui.screens.viewModels.FileManagerViewModel
 import org.cuak.sshapp.ui.screens.viewModels.SortDirection
 import org.cuak.sshapp.ui.screens.viewModels.SortOption
+import org.jetbrains.compose.resources.stringResource
+import sshapp.composeapp.generated.resources.Res
+import sshapp.composeapp.generated.resources.file_manager_local
+import sshapp.composeapp.generated.resources.file_manager_remote
+import sshapp.composeapp.generated.resources.file_manager_sort_date
+import sshapp.composeapp.generated.resources.file_manager_sort_name
+import sshapp.composeapp.generated.resources.file_manager_sort_size
+import sshapp.composeapp.generated.resources.file_manager_transfer_desc
+import sshapp.composeapp.generated.resources.file_manager_transferring
+import sshapp.composeapp.generated.resources.file_manager_up_desc
 
 @Composable
 fun FileManagerTabContent(viewModel: FileManagerViewModel) {
@@ -47,7 +57,7 @@ fun FileManagerTabContent(viewModel: FileManagerViewModel) {
         if (currentProgress != null) {
             Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.secondaryContainer).padding(8.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("Transfiriendo...", style = MaterialTheme.typography.labelSmall)
+                    Text(stringResource(Res.string.file_manager_transferring), style = MaterialTheme.typography.labelSmall)
                     Text("${(currentProgress * 100).toInt()}%", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                 }
                 Spacer(Modifier.height(4.dp))
@@ -70,7 +80,7 @@ fun FileManagerTabContent(viewModel: FileManagerViewModel) {
             
             FilePanel(
                 modifier = Modifier.weight(1f),
-                title = "Local",
+                title = stringResource(Res.string.file_manager_local),
                 path = localPath,
                 files = localFiles,
                 sortOption = viewModel.localSortOption,
@@ -90,7 +100,7 @@ fun FileManagerTabContent(viewModel: FileManagerViewModel) {
             
             FilePanel(
                 modifier = Modifier.weight(1f),
-                title = "Remoto",
+                title = stringResource(Res.string.file_manager_remote),
                 path = remotePath,
                 files = remoteFiles,
                 sortOption = viewModel.remoteSortOption,
@@ -131,7 +141,7 @@ private fun FilePanel(
                 Text(title, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 Spacer(Modifier.weight(1f))
                 IconButton(onClick = onUpClick, modifier = Modifier.size(24.dp)) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, "Subir", modifier = Modifier.size(16.dp))
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(Res.string.file_manager_up_desc), modifier = Modifier.size(16.dp))
                 }
             }
             Text(path, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis, color = Color.Gray)
@@ -150,7 +160,7 @@ private fun FilePanel(
                 horizontalArrangement = Arrangement.Center
             ) {
                 SortChip(
-                    label = "Nombre",
+                    label = stringResource(Res.string.file_manager_sort_name),
                     icon = Icons.Default.SortByAlpha,
                     option = SortOption.NAME,
                     currentOption = sortOption,
@@ -160,7 +170,7 @@ private fun FilePanel(
                 )
                 Spacer(Modifier.width(4.dp))
                 SortChip(
-                    label = "Tam.",
+                    label = stringResource(Res.string.file_manager_sort_size),
                     icon = Icons.Default.SdStorage,
                     option = SortOption.SIZE,
                     currentOption = sortOption,
@@ -170,7 +180,7 @@ private fun FilePanel(
                 )
                 Spacer(Modifier.width(4.dp))
                 SortChip(
-                    label = "Fecha",
+                    label = stringResource(Res.string.file_manager_sort_date),
                     icon = Icons.Default.DateRange,
                     option = SortOption.DATE,
                     currentOption = sortOption,
@@ -266,7 +276,7 @@ private fun FileItemRow(
         }
         if (!file.isDirectory) {
             IconButton(onClick = onTransfer, modifier = Modifier.size(24.dp)) {
-                Icon(icon, "Transferir", tint = MaterialTheme.colorScheme.primary)
+                Icon(icon, stringResource(Res.string.file_manager_transfer_desc), tint = MaterialTheme.colorScheme.primary)
             }
         }
     }
