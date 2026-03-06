@@ -161,7 +161,7 @@ fun DiskUsageBar(label: String, percentage: Double) {
         Spacer(modifier = Modifier.height(4.dp))
         
         LinearProgressIndicator(
-            progress = (percentage / 100.0).toFloat().coerceIn(0f, 1f),
+            progress = {(percentage / 100.0).toFloat().coerceIn(0f, 1f)},
             modifier = Modifier.fillMaxWidth().height(8.dp),
             color = getStatusColor(percentage, 60.0, 80.0),
             trackColor = MaterialTheme.colorScheme.surfaceVariant,

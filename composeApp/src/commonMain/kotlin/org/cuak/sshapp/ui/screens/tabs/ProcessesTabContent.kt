@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -68,9 +69,13 @@ fun ProcessesTabContent(
                 }
             }
 
-            Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+            HorizontalDivider(
+                Modifier,
+                DividerDefaults.Thickness,
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+            )
 
-            
+
             if (isLoading && processes.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
@@ -84,9 +89,10 @@ fun ProcessesTabContent(
 
                     items(processes, key = { it.pid }) { process ->
                         ProcessRow(process)
-                        Divider(
-                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
-                            thickness = 0.5.dp
+                        HorizontalDivider(
+                            Modifier,
+                            thickness = 0.5.dp,
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
                         )
                     }
                 }
@@ -142,7 +148,11 @@ fun ProcessHeaderRow(
             onClick = { onSort(ProcessSortOption.MEM) }
         )
     }
-    Divider(thickness = 1.dp, color = MaterialTheme.colorScheme.primaryContainer)
+    HorizontalDivider(
+        Modifier,
+        thickness = 1.dp,
+        color = MaterialTheme.colorScheme.primaryContainer
+    )
 }
 
 @Composable

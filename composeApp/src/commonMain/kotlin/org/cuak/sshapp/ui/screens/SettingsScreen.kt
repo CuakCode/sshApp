@@ -98,10 +98,8 @@ class SettingsScreen : Screen {
                     )
                 }
 
-                // --- SELECTOR DE IDIOMA ---
                 var languageExpanded by remember { mutableStateOf(false) }
 
-                // Mapeamos el código guardado ("es", "en") a un texto legible para el usuario
                 val currentLangLabel = when (settings.language) {
                     "es" -> "Español"
                     "en" -> "English"
@@ -118,8 +116,10 @@ class SettingsScreen : Screen {
                         readOnly = true,
                         label = { Text(stringResource(Res.string.settings_language)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = languageExpanded) },
-                        modifier = Modifier.menuAnchor().fillMaxWidth(),
-                        // Reutilizamos el string de advertencia de reinicio
+                        modifier = Modifier.menuAnchor(
+                            type = ExposedDropdownMenuAnchorType.PrimaryNotEditable,
+                            enabled = true
+                        ).fillMaxWidth(),
                         supportingText = { Text(stringResource(Res.string.settings_db_path_support)) }
                     )
                     ExposedDropdownMenu(
@@ -150,7 +150,6 @@ class SettingsScreen : Screen {
                     }
                 }
 
-                // --- RUTA DE BASE DE DATOS ---
                 OutlinedTextField(
                     value = settings.databasePath,
                     onValueChange = { viewModel.updateDatabasePath(it) },

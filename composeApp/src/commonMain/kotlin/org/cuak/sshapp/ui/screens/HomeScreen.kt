@@ -66,7 +66,7 @@ private fun HomeScreenContent(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text(stringResource(Res.string.home_title)) },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background
                 ),
                 

@@ -92,27 +92,27 @@ fun TerminalTabContent(
                 .focusRequester(focusRequester)
                 .onPreviewKeyEvent { event ->
                     if (event.type == KeyEventType.KeyDown) {
-                        when {
-                            event.key == Key.V && event.isCtrlPressed && event.isShiftPressed -> {
+                        when (event.key) {
+                            Key.V if event.isCtrlPressed && event.isShiftPressed -> {
                                 clipboardManager.getText()?.text?.let { onSendInput(it) }
                                 true
                             }
-                            event.key == Key.R && event.isCtrlPressed -> {
+                            Key.R if event.isCtrlPressed -> {
                                 onSendInput("\u0012")
                                 true
                             }
-                            event.key == Key.C && event.isCtrlPressed && !event.isShiftPressed -> {
+                            Key.C if event.isCtrlPressed && !event.isShiftPressed -> {
                                 onSendInput("\u0003")
                                 true
                             }
-                            event.key == Key.Enter -> { onSendInput("\n"); true }
-                            event.key == Key.Backspace -> { onSendInput("\u007F"); true }
-                            event.key == Key.Tab -> { onSendInput("\t"); true }
-                            event.key == Key.DirectionUp -> { onSendInput("\u001B[A"); true }
-                            event.key == Key.DirectionDown -> { onSendInput("\u001B[B"); true }
-                            event.key == Key.DirectionRight -> { onSendInput("\u001B[C"); true }
-                            event.key == Key.DirectionLeft -> { onSendInput("\u001B[D"); true }
-                            event.key == Key.Escape -> { onSendInput("\u001B"); true }
+                            Key.Enter -> { onSendInput("\n"); true }
+                            Key.Backspace -> { onSendInput("\u007F"); true }
+                            Key.Tab -> { onSendInput("\t"); true }
+                            Key.DirectionUp -> { onSendInput("\u001B[A"); true }
+                            Key.DirectionDown -> { onSendInput("\u001B[B"); true }
+                            Key.DirectionRight -> { onSendInput("\u001B[C"); true }
+                            Key.DirectionLeft -> { onSendInput("\u001B[D"); true }
+                            Key.Escape -> { onSendInput("\u001B"); true }
                             else -> false
                         }
                     } else false

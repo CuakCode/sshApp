@@ -70,10 +70,8 @@ data class ServerDetailScreen(val serverId: Long) : Screen {
             }
         }
 
-        var selectedTabIndex by remember { mutableStateOf(0) }
+        var selectedTabIndex by remember { mutableIntStateOf(0) }
         var showShutdownDialog by remember { mutableStateOf(false) }
-
-        // 1. Estado para controlar la visibilidad de las barras (TopAppBar y TabRow)
         var isUIVisible by remember { mutableStateOf(true) }
 
         if (showShutdownDialog) {
@@ -143,13 +141,12 @@ data class ServerDetailScreen(val serverId: Long) : Screen {
             Column(modifier = Modifier.padding(padding).fillMaxSize()) {
 
                 if (tabs.isNotEmpty()) {
-                    // 3. Animamos también el TabRow
                     AnimatedVisibility(
                         visible = isUIVisible,
                         enter = expandVertically(),
                         exit = shrinkVertically()
                     ) {
-                        TabRow(
+                        SecondaryTabRow(
                             selectedTabIndex = selectedTabIndex,
                             containerColor = MaterialTheme.colorScheme.surface,
                             contentColor = MaterialTheme.colorScheme.primary,

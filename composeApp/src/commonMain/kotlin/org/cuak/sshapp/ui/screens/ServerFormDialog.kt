@@ -113,7 +113,10 @@ fun ServerFormDialog(
                             focusedContainerColor = MaterialTheme.colorScheme.surface,
                             unfocusedContainerColor = MaterialTheme.colorScheme.surface
                         ),
-                        modifier = Modifier.menuAnchor().fillMaxWidth()
+                        modifier = Modifier.menuAnchor(
+                            type = ExposedDropdownMenuAnchorType.PrimaryNotEditable,
+                            enabled = true
+                        ).fillMaxWidth()
                     )
                     ExposedDropdownMenu(
                         expanded = typeExpanded,
@@ -154,7 +157,10 @@ fun ServerFormDialog(
                         label = { Text(stringResource(Res.string.server_form_icon_label)) },
                         leadingIcon = { Icon(getIconByName(selectedIcon), contentDescription = null) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = iconExpanded) },
-                        modifier = Modifier.menuAnchor().fillMaxWidth()
+                        modifier = Modifier.menuAnchor(
+                            type = ExposedDropdownMenuAnchorType.PrimaryNotEditable,
+                            enabled = true
+                        ).fillMaxWidth()
                     )
                     ExposedDropdownMenu(
                         expanded = iconExpanded,
