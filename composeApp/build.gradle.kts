@@ -173,6 +173,7 @@ compose.desktop {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb, TargetFormat.AppImage)
             packageName = "org.cuak.sshapp"
             packageVersion = "1.0.1"
+            modules("java.sql")
         }
     }
 }
